@@ -3,7 +3,11 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] — 2026-07-28
+
+First public release. Verified end to end against a real SSAS Multidimensional
+cube, and the packaged deliverable was loaded from an isolated folder — the test
+that decides whether a build is distributable at all.
 
 ### Added
 
