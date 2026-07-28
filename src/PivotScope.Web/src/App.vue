@@ -4,8 +4,8 @@ import { call, isHosted } from './bridge'
 import { setCubeMeta } from './mdx-completion'
 import type {
   AiAction, AiRunResult, CalculationDefinition, CellProvenance, CubeMeta,
-  ExistingCalculation, FieldVisibility, FilterListResult, PivotContext,
-  QueryRunResult, StoredCalculation,
+  ExistingCalculation, FieldVisibility, FilterListResult, LevelVisibility,
+  PivotContext, QueryRunResult, StoredCalculation,
 } from './types'
 import PivotHeader from './components/PivotHeader.vue'
 import MdxView from './components/MdxView.vue'
@@ -36,6 +36,25 @@ const queryPanel = ref<InstanceType<typeof QueryPanel> | null>(null)
 const fields = ref<FieldVisibility[]>([])
 const autoRefresh = ref(true)
 const busyComfort = ref(false)
+const levels = ref<LevelVisibility[]>([])
+const levelField = ref('')
+
+async function pickLevelField(cubeField: string) {
+  levelField.value = cubeField
+  levels.value = []
+  if (!cubeField) return
+  const result = await guard(busyComfort, () =>
+    call<LevelVisibility[]>('comfort.levels', { cubeField }),
+  )
+  if (result) levels.value = result
+}
+
+async function setLevels(payload: { cubeField: string; levels: string[] }) {
+  const result = await guard(busyComfort, () =>
+    call<LevelVisibility[]>('comfort.setLevels', payload),
+  )
+  if (result) levels.value = result
+}
 const calculations = ref<ExistingCalculation[]>([])
 const library = ref<StoredCalculation[]>([])
 const busyCalc = ref(false)
@@ -330,8 +349,12 @@ onMounted(() => {
       <ComfortPanel
         :context="context"
         :fields="fields"
+        :levels="levels"
+        :level-field="levelField"
         :auto-refresh="autoRefresh"
         :busy="busyComfort"
+        @pick-level-field="pickLevelField"
+        @set-levels="setLevels"
         @load="loadFields"
         @toggle-field="toggleField"
         @show-all="showAllFields"

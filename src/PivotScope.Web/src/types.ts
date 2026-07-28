@@ -98,6 +98,12 @@ export type StoredCalculation = {
   savedUtc: string
 }
 
+export type LevelVisibility = {
+  name: string
+  caption: string
+  shown: boolean
+}
+
 export type FieldVisibility = {
   name: string
   caption: string

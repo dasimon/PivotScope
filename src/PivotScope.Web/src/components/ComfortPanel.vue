@@ -1,20 +1,36 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { FieldVisibility, PivotContext } from '../types'
+import type { FieldVisibility, LevelVisibility, PivotContext } from '../types'
 
 const props = defineProps<{
   context: PivotContext | null
   fields: FieldVisibility[]
+  levels: LevelVisibility[]
+  levelField: string
   autoRefresh: boolean
   busy: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   load: []
   toggleField: [payload: { cubeField: string; visible: boolean }]
   showAll: []
   setAutoRefresh: [enabled: boolean]
+  pickLevelField: [cubeField: string]
+  setLevels: [payload: { cubeField: string; levels: string[] }]
 }>()
+
+/** Seules les hiérarchies posées sur le tableau ont des niveaux affichables. */
+const laidOutFields = computed(() =>
+  props.fields.filter(f => f.area === 'row' || f.area === 'column'),
+)
+
+function toggleLevel(name: string, shown: boolean) {
+  const next = props.levels
+    .filter(l => (l.name === name ? shown : l.shown))
+    .map(l => l.name)
+  emit('setLevels', { cubeField: props.levelField, levels: next })
+}
 
 const filter = ref('')
 
@@ -50,6 +66,46 @@ const hiddenCount = computed(() => props.fields.filter(f => !f.shownInFieldList)
         geste. L'état reste visible dans le ruban : on ne peut pas l'oublier et
         croire ensuite que le tableau est faux.
       </p>
+
+      <h2>Niveaux affichés</h2>
+      <p class="muted">
+        Une hiérarchie à quatre ou cinq niveaux les impose tous. Cochez ceux que
+        vous voulez voir : Excel n'offre nulle part ce choix.
+      </p>
+
+      <label>
+        Hiérarchie posée sur le tableau
+        <select
+          :value="levelField"
+          :disabled="busy || !laidOutFields.length"
+          @change="emit('pickLevelField', ($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">— choisir —</option>
+          <option v-for="f in laidOutFields" :key="f.name" :value="f.name">
+            {{ f.caption }} ({{ f.area }})
+          </option>
+        </select>
+      </label>
+
+      <p v-if="!laidOutFields.length" class="notice">
+        Aucune hiérarchie en ligne ou en colonne. Chargez les champs, ou posez-en
+        une sur le tableau.
+      </p>
+
+      <ul v-else-if="levels.length" class="tree" style="padding-left: 0; list-style: none">
+        <li v-for="l in levels" :key="l.name">
+          <label class="row" style="gap: 6px">
+            <input
+              type="checkbox"
+              style="width: auto"
+              :checked="l.shown"
+              :disabled="busy"
+              @change="toggleLevel(l.name, ($event.target as HTMLInputElement).checked)"
+            />
+            <span :class="{ muted: !l.shown }">{{ l.caption }}</span>
+          </label>
+        </li>
+      </ul>
 
       <div class="row">
         <h2 style="flex: 1; margin: 0">Champs de la liste</h2>

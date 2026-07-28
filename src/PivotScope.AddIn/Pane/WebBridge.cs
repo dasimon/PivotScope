@@ -186,6 +186,20 @@ internal sealed class WebBridge : IDisposable
             return await ExcelThread.RunAsync(PivotComfort.ListFields);
         });
 
+        _router.Register("comfort.levels", async (p, _) =>
+        {
+            var field = Required(p, "cubeField");
+            return await ExcelThread.RunAsync(() => PivotComfort.ListLevels(field));
+        });
+
+        _router.Register("comfort.setLevels", async (p, _) =>
+        {
+            var field = Required(p, "cubeField");
+            var levels = RequiredStrings(p, "levels");
+            return await ExcelThread.RunAsync(
+                () => PivotComfort.SetLevelVisibility(field, levels));
+        });
+
         _router.Register("comfort.showAllFields", async (_, _) =>
         {
             var restored = await ExcelThread.RunAsync(PivotComfort.ShowAllFields);
@@ -346,6 +360,19 @@ internal sealed class WebBridge : IDisposable
     /// <summary>Une chaîne vide venue d'un champ de formulaire vaut « non renseigné ».</summary>
     private static string? Blank(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static IReadOnlyList<string> RequiredStrings(JsonElement? p, string name)
+    {
+        if (p?.ValueKind != JsonValueKind.Object ||
+            !p.Value.TryGetProperty(name, out var array) ||
+            array.ValueKind != JsonValueKind.Array)
+            throw new InvalidOperationException($"Paramètre manquant : {name}");
+
+        return [.. array.EnumerateArray()
+            .Select(e => e.GetString())
+            .Where(s => !string.IsNullOrEmpty(s))
+            .Select(s => s!)];
+    }
 
     private static int RequiredInt(JsonElement? p, string name)
         => OptionalInt(p, name) ?? throw new InvalidOperationException(
