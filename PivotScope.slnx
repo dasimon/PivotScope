@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/external/" />
+  <Folder Name="/external/CubeScope/">
+    <Project Path="external/CubeScope/CubeScope.Core/CubeScope.Core.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/PivotScope.AddIn/PivotScope.AddIn.csproj" />
+    <Project Path="src/PivotScope.Core/PivotScope.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PivotScope.Core.Tests/PivotScope.Core.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+node_modules/
+dist/
+publish/
+artifacts/
+TestResults/
+*.xll
+
+# Document interne regenere par outillage local : reintroduit du contexte
+# entreprise a chaque generation. Ne doit pas etre publie.
+docs/PROJET.md

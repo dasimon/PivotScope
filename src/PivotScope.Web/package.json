@@ -1,0 +1,25 @@
+{
+  "name": "pivotscope-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "monaco-editor": "^0.56.0",
+    "vue": "^3.5.13"
+  },
+  "comment_overrides": "monaco-editor 0.56 tire dompurify 3.4.8, visé par trois advisories (<=3.4.11). npm audit fix --force rétrograderait Monaco en 0.53, ce qui casserait l'exports map utilisée par monaco-core. On force la transitive vers la version corrigée. À réévaluer quand monaco montera lui-même.",
+  "overrides": {
+    "dompurify": "^3.4.12"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.11",
+    "vue-tsc": "^3.3.8"
+  }
+}

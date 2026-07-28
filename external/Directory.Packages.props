@@ -1,0 +1,10 @@
+<Project>
+
+  <!-- Le sous-module CubeScope porte ses versions directement sur ses
+       PackageReference. La gestion centralisée de PivotScope lèverait NU1008
+       sur chacun d'eux : on la désactive pour tout ce qui est sous external/. -->
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+</Project>

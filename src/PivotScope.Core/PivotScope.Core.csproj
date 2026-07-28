@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="PivotScope.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\external\CubeScope\CubeScope.Core\CubeScope.Core.csproj" />
+  </ItemGroup>
+
+</Project>

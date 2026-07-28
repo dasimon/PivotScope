@@ -1,0 +1,21 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="ExcelDna.AddIn" Version="1.9.0" />
+    <PackageVersion Include="ExcelDna.Integration" Version="1.9.0" />
+    <PackageVersion Include="ExcelDna.Interop" Version="16.0.0" />
+    <PackageVersion Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
+  </ItemGroup>
+  <ItemGroup Label="Tests">
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.1" />
+  </ItemGroup>
+  <ItemGroup Label="Transitives épinglées">
+    <!-- ADOMD tire Microsoft.Identity.Client en 4.56.0, qui porte NU1901/NU1902.
+         Même pin que CubeScope. À resynchroniser à chaque montée d'ADOMD. -->
+    <PackageVersion Include="Microsoft.Identity.Client" Version="4.86.1" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,7 @@
+<Project>
+
+  <!-- Butoir volontaire : MSBuild remonte l'arborescence jusqu'au PREMIER
+       Directory.Build.props trouvé. Ce fichier vide empêche les conventions de
+       PivotScope de s'appliquer au sous-module CubeScope, qui a les siennes. -->
+
+</Project>

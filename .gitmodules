@@ -1,0 +1,4 @@
+[submodule "external/CubeScope"]
+	path = external/CubeScope
+	url = https://github.com/dasimon/CubeScope.git
+	branch = main

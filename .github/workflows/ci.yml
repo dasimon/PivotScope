@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: preview
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/PivotScope.Web/package-lock.json
+
+      # La cible EmbedSpa exige un dist/ : on construit la SPA avant le C#.
+      - name: Install SPA dependencies
+        run: npm ci
+        working-directory: src/PivotScope.Web
+
+      - name: Build SPA
+        run: npm run build
+        working-directory: src/PivotScope.Web
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore -p:SkipSpaBuild=true
+
+      - name: Test
+        run: dotnet test -c Release --no-build --filter "Category!=Integration"
+
+      # Rappel CubeScope : ADOMD tire Microsoft.Identity.Client en version
+      # vulnérable ; le pin direct doit rester efficace après chaque montée.
+      - name: Vulnerability audit
+        run: dotnet list package --vulnerable --include-transitive 2>&1 | Tee-Object -Variable audit; if ($audit -match 'has the following vulnerable packages') { exit 1 }
+        shell: pwsh
+
+      - name: NPM audit
+        run: npm audit --audit-level=high
+        working-directory: src/PivotScope.Web

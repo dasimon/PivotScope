@@ -1,0 +1,22 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Version>0.1.0</Version>
+    <Authors>David Simon</Authors>
+    <Product>PivotScope</Product>
+    <Copyright>Copyright (c) 2026 David Simon</Copyright>
+  </PropertyGroup>
+
+  <!-- Le sous-module CubeScope a ses propres conventions : ne pas lui imposer les nôtres
+       (il n'est pas en TreatWarningsAsErrors et n'a pas à l'être pour nous servir). -->
+  <PropertyGroup Condition="$(MSBuildProjectDirectory.Contains('external'))">
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

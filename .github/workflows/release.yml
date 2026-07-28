@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          dotnet-quality: preview
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/PivotScope.Web/package-lock.json
+
+      - name: Version depuis le tag
+        id: version
+        shell: pwsh
+        run: |
+          $v = '${{ github.ref_name }}' -replace '^v', ''
+          "value=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      # Les tests doivent passer avant de publier quoi que ce soit : une Release
+      # cassée est plus coûteuse qu'une Release tardive.
+      - name: Tests
+        run: |
+          npm --prefix src/PivotScope.Web ci
+          npm --prefix src/PivotScope.Web run build
+          dotnet test -c Release -p:SkipSpaBuild=true --filter "Category!=Integration"
+
+      - name: Livrable
+        shell: pwsh
+        run: ./build/pack.ps1 -Version ${{ steps.version.outputs.value }}
+
+      - name: Release GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/PivotScope.zip
+          generate_release_notes: true
+          body: |
+            ## Installation
+
+            Dézipper où vous voulez, puis dans Excel :
+            **Fichier → Options → Compléments → _Gérer : Compléments Excel_ →
+            Atteindre → Parcourir**, et choisir `PivotScope64.xll`.
+
+            Ne pas double-cliquer le `.xll` : Excel le prendrait pour un
+            classeur et signalerait à tort un fichier endommagé.
+
+            ### Prérequis
+
+            - Excel **64 bits** 2016 ou plus récent
+            - [.NET Desktop Runtime 10](https://dotnet.microsoft.com/download/dotnet/10.0) (x64)
+            - WebView2 Evergreen (présent par défaut sur Windows 11)
+            - Un cube **SSAS Multidimensional** accessible
+            - Facultatif : `ANTHROPIC_API_KEY` pour l'assistant MDX
