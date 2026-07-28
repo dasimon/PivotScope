@@ -13,3 +13,6 @@ TestResults/
 # Document interne regenere par outillage local : reintroduit du contexte
 # entreprise a chaque generation. Ne doit pas etre publie.
 docs/PROJET.md
+
+# Outillage personnel, hors perimetre du projet
+.clinerules
