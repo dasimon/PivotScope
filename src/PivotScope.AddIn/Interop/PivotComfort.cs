@@ -93,12 +93,23 @@ public static class PivotComfort
 
         foreach (Xl.PivotField pf in field.PivotFields)
         {
+            // CubeField.PivotFields mélange les NIVEAUX et les PROPRIÉTÉS DE
+            // MEMBRE. Sur une hiérarchie réelle, trois niveaux peuvent se
+            // retrouver noyés dans quarante propriétés : c'est IsMemberProperty
+            // qui fait le tri, et sans lui la fonction est inutilisable.
+            if (IsMemberProperty(pf)) continue;
+
             bool hidden;
             try { hidden = pf.Hidden; } catch { hidden = false; }
             levels.Add(new LevelVisibility(pf.Name, SafeCaption(pf), !hidden));
         }
 
         return levels;
+    }
+
+    private static bool IsMemberProperty(Xl.PivotField field)
+    {
+        try { return field.IsMemberProperty; } catch { return false; }
     }
 
     /// <summary>
@@ -116,17 +127,74 @@ public static class PivotComfort
                 "Gardez au moins un niveau affiché : une hiérarchie sans niveau " +
                 "visible n'a plus de sens dans le tableau.");
 
+        var app = (Xl.Application)ExcelDnaUtil.Application;
         var pivot = RequirePivot();
         var field = FindCubeField(pivot, cubeFieldName);
         var wanted = new HashSet<string>(shownLevelNames, StringComparer.Ordinal);
 
-        foreach (Xl.PivotField pf in field.PivotFields)
-            if (wanted.Contains(pf.Name)) TrySetHidden(pf, false);
+        // Sans cette enveloppe, CHAQUE bascule provoque une reconstruction du
+        // tableau et un aller-retour serveur : masquer un niveau sur une
+        // hiérarchie chargée prend alors plusieurs secondes. Différer la mise
+        // en page ramène le tout à une seule reconstruction.
+        var previousManual = false;
+        try { previousManual = pivot.ManualUpdate; } catch { /* non lisible */ }
 
-        foreach (Xl.PivotField pf in field.PivotFields)
-            if (!wanted.Contains(pf.Name)) TrySetHidden(pf, true);
+        app.ScreenUpdating = false;
+        try { pivot.ManualUpdate = true; } catch { /* non modifiable */ }
+
+        try
+        {
+            foreach (Xl.PivotField pf in field.PivotFields)
+            {
+                if (IsMemberProperty(pf)) continue;
+                if (wanted.Contains(pf.Name)) TrySetHidden(pf, false);
+            }
+
+            foreach (Xl.PivotField pf in field.PivotFields)
+            {
+                if (IsMemberProperty(pf)) continue;
+                if (!wanted.Contains(pf.Name)) TrySetHidden(pf, true);
+            }
+        }
+        finally
+        {
+            try { pivot.ManualUpdate = previousManual; } catch { /* non modifiable */ }
+            app.ScreenUpdating = true;
+        }
 
         return ListLevels(cubeFieldName);
+    }
+
+    /// <summary>
+    /// Applique les changements en attente et interroge le serveur une fois.
+    /// Indispensable quand la mise en page est différée : sinon l'utilisateur
+    /// empile des gestes sans jamais voir le résultat.
+    /// </summary>
+    public static void RefreshNow()
+    {
+        var pivot = RequirePivot();
+        var cache = pivot.PivotCache();
+
+        if (!cache.EnableRefresh) cache.EnableRefresh = true;
+        try { pivot.ManualUpdate = false; } catch { /* non modifiable */ }
+
+        pivot.RefreshTable();
+    }
+
+    /// <summary>
+    /// Mise en page différée : on dépose plusieurs champs, rien n'est envoyé au
+    /// serveur, puis <see cref="RefreshNow"/> applique tout d'un coup.
+    ///
+    /// À ne pas confondre avec PivotCache.EnableRefresh, qui INTERDIT
+    /// l'actualisation — bouton d'Excel compris — et laisse l'utilisateur sans
+    /// moyen de voir son tableau.
+    /// </summary>
+    public static bool SetDeferLayout(bool deferred)
+    {
+        var pivot = RequirePivot();
+        pivot.ManualUpdate = deferred;
+        if (!deferred) pivot.RefreshTable();
+        return deferred;
     }
 
     private static void TrySetHidden(Xl.PivotField field, bool hidden)
@@ -178,29 +246,16 @@ public static class PivotComfort
     }
 
     /// <summary>
-    /// Le rafraîchissement automatique, mécanique reprise de l'add-in d'origine :
-    /// EnableRefresh sur le cache, plus le mode de calcul d'Excel.
+    /// La mise en page est-elle différée ? Hors TCD on répond « non », qui est
+    /// l'état par défaut d'Excel.
     /// </summary>
-    public static bool IsAutoRefreshEnabled()
+    public static bool IsLayoutDeferred()
     {
         var app = (Xl.Application)ExcelDnaUtil.Application;
         Xl.PivotTable? pivot = null;
         try { pivot = app.ActiveCell?.PivotTable; } catch { /* hors TCD */ }
-        if (pivot is null) return true;
+        if (pivot is null) return false;
 
-        try { return pivot.PivotCache().EnableRefresh; } catch { return true; }
-    }
-
-    public static bool SetAutoRefresh(bool enabled)
-    {
-        var app = (Xl.Application)ExcelDnaUtil.Application;
-        var pivot = RequirePivot();
-
-        pivot.PivotCache().EnableRefresh = enabled;
-        app.Calculation = enabled
-            ? Xl.XlCalculation.xlCalculationAutomatic
-            : Xl.XlCalculation.xlCalculationManual;
-
-        return enabled;
+        try { return pivot.ManualUpdate; } catch { return false; }
     }
 }

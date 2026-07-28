@@ -225,11 +225,22 @@ async function refreshAutoRefresh() {
   if (next) autoRefresh.value = next.enabled
 }
 
+/**
+ * `autoRefresh = false` signifie « mise en page différée ». On passe par
+ * ManualUpdate et non par EnableRefresh : ce dernier interdit l'actualisation,
+ * bouton d'Excel compris, et laisse l'utilisateur sans moyen de voir son tableau.
+ */
 async function setAutoRefresh(enabled: boolean) {
   const next = await guard(busyComfort, () =>
-    call<{ enabled: boolean }>('comfort.autoRefresh', { enabled }),
+    call<{ deferred: boolean }>('comfort.deferLayout', { deferred: !enabled }),
   )
-  if (next) autoRefresh.value = next.enabled
+  if (next) autoRefresh.value = !next.deferred
+}
+
+async function refreshNow() {
+  await guard(busyComfort, () => call<{ refreshed: boolean }>('comfort.refreshNow'))
+  autoRefresh.value = true
+  if (levelField.value) await pickLevelField(levelField.value)
 }
 
 async function cancelQuery() {
@@ -355,6 +366,7 @@ onMounted(() => {
         :busy="busyComfort"
         @pick-level-field="pickLevelField"
         @set-levels="setLevels"
+        @refresh-now="refreshNow"
         @load="loadFields"
         @toggle-field="toggleField"
         @show-all="showAllFields"

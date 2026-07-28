@@ -16,6 +16,7 @@ const emit = defineEmits<{
   toggleField: [payload: { cubeField: string; visible: boolean }]
   showAll: []
   setAutoRefresh: [enabled: boolean]
+  refreshNow: []
   pickLevelField: [cubeField: string]
   setLevels: [payload: { cubeField: string; levels: string[] }]
 }>()
@@ -55,17 +56,23 @@ const hiddenCount = computed(() => props.fields.filter(f => !f.shownInFieldList)
         <input
           type="checkbox"
           style="width: auto"
-          :checked="autoRefresh"
+          :checked="!autoRefresh"
           :disabled="busy"
-          @change="$emit('setAutoRefresh', ($event.target as HTMLInputElement).checked)"
+          @change="$emit('setAutoRefresh', !($event.target as HTMLInputElement).checked)"
         />
-        Rafraîchissement automatique
+        Différer la mise en page
       </label>
       <p class="muted">
-        Coupez-le pour déposer plusieurs champs sans attendre le serveur à chaque
-        geste. L'état reste visible dans le ruban : on ne peut pas l'oublier et
-        croire ensuite que le tableau est faux.
+        Activez-le pour déposer plusieurs champs sans attendre le serveur à
+        chaque geste, puis appliquez tout d'un coup. L'état reste visible dans le
+        ruban : on ne peut pas l'oublier et croire ensuite que le tableau est faux.
       </p>
+
+      <div class="row">
+        <button :disabled="busy" @click="emit('refreshNow')">
+          {{ busy ? 'Actualisation…' : 'Appliquer et actualiser' }}
+        </button>
+      </div>
 
       <h2>Niveaux affichés</h2>
       <p class="muted">

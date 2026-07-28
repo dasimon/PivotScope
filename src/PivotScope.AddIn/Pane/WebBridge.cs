@@ -186,6 +186,20 @@ internal sealed class WebBridge : IDisposable
             return await ExcelThread.RunAsync(PivotComfort.ListFields);
         });
 
+        _router.Register("comfort.refreshNow", async (_, _) =>
+        {
+            await ExcelThread.RunAsync(PivotComfort.RefreshNow);
+            PivotScopeRibbon.Invalidate();
+            return new { refreshed = true };
+        });
+
+        _router.Register("comfort.deferLayout", async (p, _) =>
+        {
+            var deferred = Flag(p, "deferred", false);
+            await ExcelThread.RunAsync(() => PivotComfort.SetDeferLayout(deferred));
+            return new { deferred };
+        });
+
         _router.Register("comfort.levels", async (p, _) =>
         {
             var field = Required(p, "cubeField");
@@ -207,19 +221,11 @@ internal sealed class WebBridge : IDisposable
             return new { restored, fields };
         });
 
-        _router.Register("comfort.autoRefresh", async (p, _) =>
+        _router.Register("comfort.autoRefresh", async (_, _) =>
         {
-            // Sans paramètre « enabled », l'appel se contente de lire l'état.
-            if (p?.ValueKind == JsonValueKind.Object &&
-                p.Value.TryGetProperty("enabled", out var requested) &&
-                requested.ValueKind is JsonValueKind.True or JsonValueKind.False)
-            {
-                var enabled = Flag(p, "enabled", true);
-                await ExcelThread.RunAsync(() => PivotComfort.SetAutoRefresh(enabled));
-                PivotScopeRibbon.Invalidate();
-            }
-
-            return new { enabled = await ExcelThread.RunAsync(PivotComfort.IsAutoRefreshEnabled) };
+            // Conservé pour la lecture d'état au chargement du volet : l'écriture
+            // passe désormais par comfort.deferLayout.
+            return new { enabled = !await ExcelThread.RunAsync(PivotComfort.IsLayoutDeferred) };
         });
 
         _router.Register("query.cancel", (_, _) =>

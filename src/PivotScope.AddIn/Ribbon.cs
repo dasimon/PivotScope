@@ -31,14 +31,20 @@ public class PivotScopeRibbon : ExcelRibbon
                           onAction="OnOpenPane"/>
                 </group>
                 <group id="grpComfort" label="Construction">
-                  <toggleButton id="btnAutoRefresh"
-                                label="Rafraîchissement auto"
-                                screentip="Couper le rafraîchissement automatique du tableau croisé dynamique"
-                                supertip="Enfoncé = actif. Coupez-le pour déposer plusieurs champs sans attendre le serveur à chaque geste. L'état reste visible ici, pour ne pas croire ensuite que le tableau est faux."
+                  <toggleButton id="btnDeferLayout"
+                                label="Différer la mise en page"
+                                screentip="Déposer plusieurs champs sans interroger le serveur"
+                                supertip="Enfoncé = différé. Rien n'est envoyé au serveur tant que vous n'avez pas appliqué. L'état reste visible ici, pour ne pas croire ensuite que le tableau est faux."
                                 size="large"
-                                imageMso="RefreshAll"
-                                getPressed="GetAutoRefreshPressed"
-                                onAction="OnToggleAutoRefresh"/>
+                                imageMso="PivotTableLayoutDeferUpdate"
+                                getPressed="GetDeferLayoutPressed"
+                                onAction="OnToggleDeferLayout"/>
+                  <button id="btnRefreshNow"
+                          label="Appliquer et actualiser"
+                          screentip="Appliquer les changements en attente et interroger le serveur"
+                          size="large"
+                          imageMso="RefreshAll"
+                          onAction="OnRefreshNow"/>
                 </group>
               </tab>
             </tabs>
@@ -70,23 +76,31 @@ public class PivotScopeRibbon : ExcelRibbon
     }
 
     /// <summary>
-    /// Hors TCD, on affiche « actif » : c'est l'état par défaut d'Excel, et un
-    /// bouton relâché laisserait croire à un réglage en vigueur qui n'existe pas.
+    /// Hors TCD, on affiche « non différé » : c'est l'état par défaut d'Excel,
+    /// et un bouton enfoncé laisserait croire à un réglage en vigueur.
     /// </summary>
-    public bool GetAutoRefreshPressed(IRibbonControl control)
+    public bool GetDeferLayoutPressed(IRibbonControl control)
     {
-        try { return PivotComfort.IsAutoRefreshEnabled(); }
-        catch { return true; }
+        try { return PivotComfort.IsLayoutDeferred(); }
+        catch { return false; }
     }
 
-    public void OnToggleAutoRefresh(IRibbonControl control, bool pressed)
+    public void OnToggleDeferLayout(IRibbonControl control, bool pressed)
+        => Run(() => PivotComfort.SetDeferLayout(pressed), "bascule de la mise en page différée");
+
+    public void OnRefreshNow(IRibbonControl control)
+        => Run(() => { PivotComfort.RefreshNow(); return true; }, "actualisation");
+
+    /// <summary>
+    /// Exécute une action Excel hors du callback du ruban, puis réinvalide le
+    /// ruban pour que l'état affiché reste celui de la réalité.
+    /// </summary>
+    private static void Run<T>(Func<T> work, string label)
     {
-        _ = ExcelThread.RunAsync(() => PivotComfort.SetAutoRefresh(pressed))
-            .ContinueWith(task =>
-            {
-                if (task.IsFaulted)
-                    FileLog.Write("Échec de bascule du rafraîchissement.", task.Exception);
-                Invalidate();
-            }, TaskScheduler.Default);
+        _ = ExcelThread.RunAsync(work).ContinueWith(task =>
+        {
+            if (task.IsFaulted) FileLog.Write($"Échec : {label}.", task.Exception);
+            Invalidate();
+        }, TaskScheduler.Default);
     }
 }
