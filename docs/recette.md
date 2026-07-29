@@ -191,6 +191,22 @@ vu qu'au téléchargement.
       résolue depuis cet emplacement.
 - [ ] Fermer Excel, rouvrir, recharger : la bibliothèque a survécu
 
+## Suivi automatique et navigation (refonte ergonomique)
+
+- [ ] **Le volet suit le TCD sans qu'on le lui demande** : déplacer le curseur
+      d'un TCD à un autre → l'en-tête change seul, sans cliquer « Actualiser »
+- [ ] Déposer un champ sur le TCD → le MDX affiché se met à jour seul
+- [ ] Parcourir rapidement beaucoup de cellules → **un seul** rechargement, pas
+      un par cellule (les notifications sont regroupées)
+- [ ] Changer de classeur → l'en-tête suit
+- [ ] **L'en-tête reste visible depuis les cinq onglets**
+- [ ] Les cinq onglets tiennent dans la largeur du volet, sans troncature
+- [ ] Ouvrir *Tableau* → les champs se chargent seuls
+- [ ] Ouvrir *Calculs* → calculs et bibliothèque se chargent seuls
+- [ ] Ouvrir *Ce chiffre* sur une cellule de valeur → l'analyse se fait seule
+- [ ] Ouvrir *Requête* → l'explorateur de métadonnées est là, replié
+- [ ] Hors TCD, changer d'onglet ne déclenche **aucun** appel serveur
+
 ## Déchargement
 
 - [ ] Fermer Excel : « PivotScope déchargé » dans le log

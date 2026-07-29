@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
-import { call, isHosted } from './bridge'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { call, isHosted, onEvent } from './bridge'
 import { setCubeMeta } from './mdx-completion'
 import type {
   AiAction, AiRunResult, CalculationDefinition, CellProvenance, CubeMeta,
@@ -17,11 +17,14 @@ import CalcPanel from './components/CalcPanel.vue'
 import ProvenancePanel from './components/ProvenancePanel.vue'
 import AiPanel from './components/AiPanel.vue'
 
-type Tab =
-  | 'apercu' | 'requete' | 'calculs' | 'provenance' | 'ia'
-  | 'metadonnees' | 'filtre' | 'construction'
+/**
+ * Cinq onglets, groupés par intention plutôt que par fonction. Les huit
+ * précédents débordaient d'un volet de 480 px : le dernier n'était atteignable
+ * qu'en devinant qu'il existait.
+ */
+type Tab = 'tableau' | 'requete' | 'calculs' | 'provenance' | 'ia'
 
-const tab = ref<Tab>('apercu')
+const tab = ref<Tab>('tableau')
 const context = ref<PivotContext | null>(null)
 const meta = ref<CubeMeta | null>(null)
 const error = ref<string | null>(null)
@@ -88,6 +91,25 @@ async function runAi(payload: { action: AiAction; mdx: string }) {
 
 // L'autocomplétion MDX suit les métadonnées du cube courant.
 watch(meta, next => setCubeMeta(next))
+
+/**
+ * Chaque onglet charge ce dont il a besoin en s'ouvrant. Auparavant six boutons
+ * « Charger » répartis sur quatre panneaux obligeaient à deviner qu'il fallait
+ * amorcer chaque section — un panneau vide ne dit pas qu'il attend un clic.
+ * Les boutons subsistent pour recharger et pour voir l'erreur en cas d'échec.
+ */
+watch(tab, async current => {
+  if (!context.value?.isOlap) return
+
+  if (current === 'tableau') {
+    if (!fields.value.length) await loadFields()
+  } else if (current === 'calculs') {
+    if (!calculations.value.length) await loadCalculations()
+    if (!library.value.length) await loadLibrary()
+  } else if (current === 'provenance') {
+    if (!provenance.value) await describeCell()
+  }
+})
 
 /** Toute erreur remonte dans un bandeau. Jamais de boîte de dialogue. */
 async function guard<T>(busy: { value: boolean }, work: () => Promise<T>): Promise<T | null> {
@@ -262,16 +284,46 @@ async function applyFilter(payload: { cubeField: string; level: string; keys: st
   await loadContext()
 }
 
+/**
+ * Le volet suit le TCD au lieu d'attendre un clic sur « Actualiser ».
+ * Les notifications arrivent au rythme des déplacements de curseur : on les
+ * regroupe, sinon un simple parcours du tableau déclencherait autant
+ * d'allers-retours que de cellules traversées.
+ */
+let followTimer: number | undefined
+
+function onPivotChanged(payload: Record<string, unknown>) {
+  const full = payload.pivotChanged === true
+  window.clearTimeout(followTimer)
+  followTimer = window.setTimeout(() => {
+    if (full) void loadContext()
+    // La provenance suit la cellule : la recharger n'a de sens que si l'onglet
+    // est visible, sinon on interrogerait le serveur pour rien.
+    else if (tab.value === 'provenance') void describeCell()
+  }, 250)
+}
+
+let unsubscribe: (() => void) | undefined
+
 onMounted(() => {
-  if (isHosted) {
-    void loadContext()
-    // L'IA ne dépend que de l'environnement : on interroge son état une fois,
-    // pour que le panneau se dégrade proprement plutôt qu'à l'usage.
-    void call<{ configured: boolean }>('ai.status')
-      .then(s => { aiConfigured.value = s.configured })
-      .catch(() => { aiConfigured.value = false })
+  if (!isHosted) {
+    error.value = "Cette page doit être ouverte depuis le volet PivotScope d'Excel."
+    return
   }
-  else error.value = "Cette page doit être ouverte depuis le volet PivotScope d'Excel."
+
+  void loadContext()
+  unsubscribe = onEvent('pivotChanged', onPivotChanged)
+
+  // L'IA ne dépend que de l'environnement : on interroge son état une fois,
+  // pour que le panneau se dégrade proprement plutôt qu'à l'usage.
+  void call<{ configured: boolean }>('ai.status')
+    .then(s => { aiConfigured.value = s.configured })
+    .catch(() => { aiConfigured.value = false })
+})
+
+onBeforeUnmount(() => {
+  window.clearTimeout(followTimer)
+  unsubscribe?.()
 })
 </script>
 
@@ -281,30 +333,56 @@ onMounted(() => {
     <button @click="error = null" title="Masquer">×</button>
   </div>
 
+  <!-- En-tête permanent : on sait toujours sur quoi on agit, quel que soit
+       l'onglet ouvert. Il remplace l'ancien onglet « Aperçu », qui occupait
+       une place entière pour trois lignes qu'on veut voir tout le temps. -->
+  <PivotHeader :context="context" :busy="busyContext" @refresh="loadContext" />
+
   <nav class="tabs">
-    <button :class="{ active: tab === 'apercu' }" @click="tab = 'apercu'">Aperçu</button>
+    <button :class="{ active: tab === 'tableau' }" @click="tab = 'tableau'">Tableau</button>
     <button :class="{ active: tab === 'requete' }" @click="tab = 'requete'">Requête</button>
     <button :class="{ active: tab === 'calculs' }" @click="tab = 'calculs'">Calculs</button>
     <button :class="{ active: tab === 'provenance' }" @click="tab = 'provenance'">
       Ce chiffre
     </button>
     <button :class="{ active: tab === 'ia' }" @click="tab = 'ia'">IA</button>
-    <button :class="{ active: tab === 'metadonnees' }" @click="tab = 'metadonnees'">
-      Métadonnées
-    </button>
-    <button :class="{ active: tab === 'filtre' }" @click="tab = 'filtre'">Filtre</button>
-    <button :class="{ active: tab === 'construction' }" @click="tab = 'construction'">
-      Construction
-    </button>
   </nav>
 
   <main class="body">
-    <div v-show="tab === 'apercu'" class="stack">
-      <PivotHeader :context="context" :busy="busyContext" @refresh="loadContext" />
+    <!-- Tout ce qui agit sur le tableau lui-même, dans l'ordre où on s'en sert :
+         voir la requête, filtrer, choisir les niveaux, régler la construction. -->
+    <div v-show="tab === 'tableau'" class="stack">
       <MdxView :mdx="context?.mdx ?? null" />
+
+      <FilterList
+        ref="filterPanel"
+        :context="context"
+        :meta="meta"
+        :busy="busyFilter"
+        @apply="applyFilter"
+        @load-meta="loadMeta"
+      />
+
+      <ComfortPanel
+        :context="context"
+        :fields="fields"
+        :levels="levels"
+        :level-field="levelField"
+        :auto-refresh="autoRefresh"
+        :busy="busyComfort"
+        @pick-level-field="pickLevelField"
+        @set-levels="setLevels"
+        @refresh-now="refreshNow"
+        @load="loadFields"
+        @toggle-field="toggleField"
+        @show-all="showAllFields"
+        @set-auto-refresh="setAutoRefresh"
+      />
     </div>
 
-    <div v-show="tab === 'requete'">
+    <!-- L'explorateur de métadonnées vit ici, replié : c'est en écrivant du MDX
+         qu'on en a besoin, pas deux onglets plus loin. -->
+    <div v-show="tab === 'requete'" class="stack">
       <QueryPanel
         ref="queryPanel"
         :context="context"
@@ -312,10 +390,11 @@ onMounted(() => {
         @run="runQuery"
         @cancel="cancelQuery"
       />
-    </div>
 
-    <div v-show="tab === 'metadonnees'">
-      <MetadataTree :meta="meta" :busy="busyMeta" @load="loadMeta" />
+      <details>
+        <summary>Métadonnées du cube</summary>
+        <MetadataTree :meta="meta" :busy="busyMeta" @load="loadMeta" />
+      </details>
     </div>
 
     <div v-show="tab === 'calculs'">
@@ -356,33 +435,5 @@ onMounted(() => {
       />
     </div>
 
-    <div v-show="tab === 'construction'">
-      <ComfortPanel
-        :context="context"
-        :fields="fields"
-        :levels="levels"
-        :level-field="levelField"
-        :auto-refresh="autoRefresh"
-        :busy="busyComfort"
-        @pick-level-field="pickLevelField"
-        @set-levels="setLevels"
-        @refresh-now="refreshNow"
-        @load="loadFields"
-        @toggle-field="toggleField"
-        @show-all="showAllFields"
-        @set-auto-refresh="setAutoRefresh"
-      />
-    </div>
-
-    <div v-show="tab === 'filtre'">
-      <FilterList
-        ref="filterPanel"
-        :context="context"
-        :meta="meta"
-        :busy="busyFilter"
-        @apply="applyFilter"
-        @load-meta="loadMeta"
-      />
-    </div>
   </main>
 </template>

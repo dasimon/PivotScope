@@ -46,10 +46,18 @@ internal sealed class WebBridge : IDisposable
     /// </summary>
     private readonly Lazy<CalculationLibrary> _library = new(() => new CalculationLibrary());
 
+    /// <summary>
+    /// Suit le TCD actif et pousse un événement vers la SPA. Sans lui, le volet
+    /// affiche l'état du dernier clic sur « Actualiser » : potentiellement faux,
+    /// et silencieusement.
+    /// </summary>
+    private readonly PivotWatcher _watcher;
+
     internal WebBridge(PaneControl control)
     {
         _control = control;
         _control.MessageReceived += OnMessage;
+        _watcher = new PivotWatcher(NotifyPivotChanged);
 
         _router.Register("pivot.context", async (_, _) =>
         {
@@ -418,8 +426,26 @@ internal sealed class WebBridge : IDisposable
         }
     }
 
+    /// <summary>
+    /// Notification poussée, sans identifiant de requête : la SPA la reconnaît
+    /// à sa propriété « event » et décide seule quoi recharger.
+    /// </summary>
+    private void NotifyPivotChanged(bool pivotChanged)
+    {
+        try
+        {
+            _control.PostToWeb(
+                $$"""{"event":"pivotChanged","pivotChanged":{{(pivotChanged ? "true" : "false")}}}""");
+        }
+        catch (Exception ex)
+        {
+            FileLog.Write("Échec de notification du changement de TCD.", ex);
+        }
+    }
+
     public void Dispose()
     {
+        _watcher.Dispose();
         _control.MessageReceived -= OnMessage;
         _sessions.Dispose();
         if (_library.IsValueCreated) _library.Value.Dispose();

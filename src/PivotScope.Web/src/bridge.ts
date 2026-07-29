@@ -35,16 +35,41 @@ declare global {
 const pending = new Map<string, Pending>()
 let sequence = 0
 
+/** Notifications poussées par l'add-in, sans requête associée. */
+type BridgeEvent = { event: string; [key: string]: unknown }
+
+const listeners = new Map<string, Set<(payload: BridgeEvent) => void>>()
+
+/** S'abonne à un événement poussé. Rend la fonction de désabonnement. */
+export function onEvent(
+  name: string,
+  handler: (payload: BridgeEvent) => void,
+): () => void {
+  const set = listeners.get(name) ?? new Set()
+  set.add(handler)
+  listeners.set(name, set)
+  return () => set.delete(handler)
+}
+
 const webview = window.chrome?.webview
 
 webview?.addEventListener('message', event => {
-  let response: BridgeResponse
+  let message: BridgeResponse | BridgeEvent
   try {
-    response = JSON.parse(event.data) as BridgeResponse
+    message = JSON.parse(event.data) as BridgeResponse | BridgeEvent
   } catch {
     return
   }
 
+  // Une notification poussée n'a pas d'identifiant : elle porte « event ».
+  if ('event' in message && typeof message.event === 'string') {
+    for (const handler of listeners.get(message.event) ?? []) {
+      try { handler(message as BridgeEvent) } catch { /* un abonné ne bloque pas les autres */ }
+    }
+    return
+  }
+
+  const response = message as BridgeResponse
   const entry = pending.get(response.id)
   if (!entry) return
   pending.delete(response.id)
