@@ -9,6 +9,12 @@ namespace PivotScope.AddIn;
 /// <summary>
 /// Onglet de ruban. L'add-in d'origine n'en avait aucun : tout passait par un
 /// clic droit, ce qui rend le produit invisible. Point d'entrée assumé ici.
+///
+/// <para><b>Piège des imageMso</b> : un identifiant inconnu d'Excel n'émet
+/// aucune erreur — le bouton s'affiche simplement sans icône. Un identifiant
+/// qui n'existe qu'en 16 × 16 fait de même sur un bouton <c>size="large"</c>,
+/// qui réclame une variante 32 × 32. Dans les deux cas l'échec est muet : tout
+/// ajout d'icône se vérifie à l'œil, jamais au compilateur.</para>
 /// </summary>
 [ComVisible(true)]
 public class PivotScopeRibbon : ExcelRibbon
@@ -36,7 +42,7 @@ public class PivotScopeRibbon : ExcelRibbon
                                 screentip="Déposer plusieurs champs sans interroger le serveur"
                                 supertip="Enfoncé = différé. Rien n'est envoyé au serveur tant que vous n'avez pas appliqué. L'état reste visible ici, pour ne pas croire ensuite que le tableau est faux."
                                 size="large"
-                                imageMso="PivotTableLayoutDeferUpdate"
+                                imageMso="Pause"
                                 getPressed="GetDeferLayoutPressed"
                                 onAction="OnToggleDeferLayout"/>
                   <button id="btnRefreshNow"
