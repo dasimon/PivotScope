@@ -144,6 +144,12 @@ public static class PivotComfort
         var field = FindCubeField(pivot, cubeFieldName);
         var wanted = new HashSet<string>(shownLevelNames, StringComparer.Ordinal);
 
+        // On trace la requête avant/après : c'est la seule façon de savoir si
+        // un aller-retour serveur était réellement nécessaire. Requête
+        // identique = Excel pouvait servir depuis son cache ; requête modifiée
+        // = l'ensemble d'axe a changé et le serveur doit recalculer.
+        var mdxBefore = SafeMdx(pivot);
+
         // Sans cette enveloppe, CHAQUE bascule provoque une reconstruction du
         // tableau et un aller-retour serveur : masquer un niveau sur une
         // hiérarchie chargée prend alors plusieurs secondes. Différer la mise
@@ -187,7 +193,18 @@ public static class PivotComfort
             app.ScreenUpdating = true;
         }
 
+        var mdxAfter = SafeMdx(pivot);
+        FileLog.Write(string.Equals(mdxBefore, mdxAfter, StringComparison.Ordinal)
+            ? "Niveaux : requête MDX inchangée — Excel pouvait servir depuis son cache."
+            : $"Niveaux : requête MDX modifiée, un aller-retour serveur est " +
+              $"nécessaire.\n  avant : {mdxBefore}\n  après : {mdxAfter}");
+
         return ListLevels(cubeFieldName);
+    }
+
+    private static string SafeMdx(Xl.PivotTable pivot)
+    {
+        try { return pivot.MDX ?? string.Empty; } catch { return string.Empty; }
     }
 
     /// <summary>
