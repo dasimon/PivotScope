@@ -220,3 +220,4 @@ vu qu'au téléchargement.
 | 0.2.0 (phase 2) | 2026-07-27 | David | ✅ éditeur Monaco et complétion contextuelle, requête libre → plage (nouvelle feuille et cellule active, avec et sans en-têtes), création d'une mesure calculée affichée dans le TCD |
 | 0.3.0 (phase 3) | 2026-07-28 | David | ✅ provenance d'une cellule, assistant MDX, menu contextuel |
 | 0.3.0 (livrable) | 2026-07-28 | David | ✅ **zip extrait dans un dossier isolé, chargé depuis là : fonctionne** — les assemblies managées sont bien fusionnées et les natives résolues |
+| 0.4.0 | 2026-07-28 | David | ✅ sélecteur de niveaux, suivi automatique du TCD, refonte du volet en cinq onglets, en-tête permanent, icône du ruban |

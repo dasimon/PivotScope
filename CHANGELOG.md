@@ -3,6 +3,33 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-07-28
+
+### Added
+
+- **The pane now follows the PivotTable.** It subscribes to Excel's selection,
+  pivot-update and workbook-activate events, so the header and the generated MDX
+  keep up on their own. Until now it showed the state as of the last manual
+  refresh — possibly stale, and silently so. That was the whole argument against
+  the original add-in's modal dialog, and it wasn't honoured.
+- **Level chooser.** Pick which levels of a hierarchy are displayed — Excel
+  imposes all of them, and offers this nowhere. Applied in one go behind an
+  explicit button, because each application rebuilds the table.
+- **Stop button** on free MDX queries, cancelling through to the server.
+
+### Changed
+
+- **Five tabs instead of eight**, grouped by intent. Eight overflowed a 480 px
+  pane; the last one was only reachable by guessing it existed.
+- **Permanent header** — server, cube, fields — visible from every tab, so you
+  always know what you are acting on. It replaces the old *Overview* tab.
+- Metadata moved inside *Query*, collapsed: you need it while writing MDX.
+- Each tab loads what it needs when opened. Six *Load* buttons across four
+  panels made you guess that sections had to be primed.
+- Deferred layout replaces the earlier "auto refresh" toggle, which used
+  `PivotCache.EnableRefresh` — that setting *forbids* refreshing, Excel's own
+  button included, leaving no way to see the table.
+
 ## [0.3.0] — 2026-07-28
 
 First public release. Verified end to end against a real SSAS Multidimensional
