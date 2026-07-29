@@ -107,6 +107,14 @@ public static class PivotComfort
         return levels;
     }
 
+    /// <summary>Millisecondes écoulées depuis le repère, qu'elle réarme.</summary>
+    private static long Since(ref long timestamp)
+    {
+        var ms = (long)System.Diagnostics.Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds;
+        timestamp = System.Diagnostics.Stopwatch.GetTimestamp();
+        return ms;
+    }
+
     private static void TryDrillDown(Xl.PivotField field)
     {
         try
@@ -163,6 +171,13 @@ public static class PivotComfort
         app.ScreenUpdating = false;
         try { pivot.ManualUpdate = true; } catch { /* non modifiable */ }
 
+        // Chronométrage par étape : sans lui, on sait seulement que « c'est
+        // long », pas laquelle des trois opérations coûte. Mesuré sur un cube
+        // réel, le déploiement des niveaux masqués est le suspect principal —
+        // déplier une hiérarchie de plusieurs milliers de membres peut demander
+        // l'arbre entier au serveur.
+        long showMs = 0, drillMs = 0, hideMs = 0, rebuildMs = 0;
+
         try
         {
             // Premier passage : afficher. On garantit ainsi qu'au moins un
@@ -171,6 +186,7 @@ public static class PivotComfort
             foreach (Xl.PivotField pf in field.PivotFields)
                 if (!IsMemberProperty(pf)) levels.Add(pf);
 
+            var step = System.Diagnostics.Stopwatch.GetTimestamp();
             var firstVisible = -1;
             for (var i = 0; i < levels.Count; i++)
             {
@@ -178,6 +194,7 @@ public static class PivotComfort
                 TrySetHidden(levels[i], false);
                 if (firstVisible < 0) firstVisible = i;
             }
+            showMs = Since(ref step);
 
             // Les niveaux masqués AU-DESSUS du premier visible doivent être
             // développés, sinon le tableau reste replié sur eux et le niveau
@@ -185,14 +202,22 @@ public static class PivotComfort
             // jamais développé : il n'a rien en dessous.
             for (var i = 0; i < firstVisible && i < levels.Count - 1; i++)
                 TryDrillDown(levels[i]);
+            drillMs = Since(ref step);
 
             // Second passage : masquer.
             foreach (var pf in levels)
                 if (!wanted.Contains(pf.Name)) TrySetHidden(pf, true);
+            hideMs = Since(ref step);
         }
         finally
         {
+            // La reconstruction réelle a lieu ICI, quand on rend la main à
+            // Excel : tout ce qui précède n'empile que des changements en
+            // attente. C'est donc cette ligne-là qui porte le vrai coût.
+            var rebuild = System.Diagnostics.Stopwatch.GetTimestamp();
             try { pivot.ManualUpdate = previousManual; } catch { /* non modifiable */ }
+            rebuildMs = Since(ref rebuild);
+
             app.ScreenUpdating = true;
         }
 
@@ -208,8 +233,9 @@ public static class PivotComfort
         };
 
         FileLog.Write(
-            $"Niveaux appliqués en {elapsed:F0} ms — {verdict} " +
-            $"(avant : {mdxBefore.Describe()}, après : {mdxAfter.Describe()}).");
+            $"Niveaux appliqués en {elapsed:F0} ms — {verdict}. " +
+            $"Détail : afficher {showMs} ms, déplier {drillMs} ms, " +
+            $"masquer {hideMs} ms, reconstruction {rebuildMs} ms.");
 
         if (mdxBefore.Readable && mdxAfter.Readable && mdxBefore.Text != mdxAfter.Text)
             FileLog.Write($"  avant : {mdxBefore.Text}\n  après : {mdxAfter.Text}");

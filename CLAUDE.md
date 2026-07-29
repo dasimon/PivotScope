@@ -180,5 +180,22 @@ dossier de build. Workflow `release.yml` sur tag `v*`.
   le `.xll` de là. Enregistrer un calcul dans la bibliothèque exerce SQLite,
   donc la résolution des natives.
 
-**Phases suivantes** : 3 = panneau IA et « d'où vient ce chiffre » ;
-4 = Profiler FE/SE et Clear PivotTable Cache ; 5 = packaging et publication.
+**Phase 4 : suspendue.** Elle devait mesurer si Excel interroge le serveur lors
+d'une opération sur le TCD. La question s'est réglée sans code : copier la
+requête affichée par PivotScope et la rejouer dans CubeScope suffit — elle est
+lente en elle-même, le coût est **dans le cube**. Un second profileur ici
+serait un doublon de celui de CubeScope. Les deux outils se composent : l'un
+montre la requête, l'autre la dissèque.
+
+**Clear PivotTable Cache** reste hors périmètre : seule fonction de la feuille
+de route qui modifie la connexion du classeur de l'utilisateur.
+
+### Sur la lenteur d'un TCD, ce qu'il faut savoir
+
+- Un TCD OLAP **froid** paie le prix entier de sa requête ; ensuite tout est en
+  cache. Mesuré sur un cube réel : 5 minutes puis ~130 ms.
+- **`PivotTable.MDX` ne reflète pas la visibilité des niveaux.** Comparer cette
+  requête avant/après une opération ne prouve rien — instrument abandonné après
+  l'avoir cru concluant à tort. Seul le temps mesuré est informatif.
+- Le bon réflexe de diagnostic n'est pas dans PivotScope : **copier la requête
+  et la rejouer dans CubeScope**.

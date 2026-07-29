@@ -1,5 +1,23 @@
 # PivotScope — plan d'implémentation, phase 4
 
+> **STATUT : SUSPENDU (2026-07-28).** Ce plan a été écrit pour répondre à une
+> question — *« Excel interroge-t-il vraiment le serveur quand je masque des
+> niveaux ? »* — à laquelle David a répondu lui-même, sans trace et sans code :
+> il a copié la requête que PivotScope affiche et l'a rejouée dans CubeScope.
+> Elle est lente en elle-même. Le coût est donc **dans le cube**, pas dans
+> Excel ni dans le complément. Les 5 minutes à froid sont le prix de cette
+> requête ; les 130 ms suivantes viennent du cache.
+>
+> Conséquence : PivotScope n'a pas besoin de son propre profileur. Analyser une
+> requête lente est **le métier de CubeScope**, qui a déjà le sien, et les deux
+> outils se composent parfaitement — l'un montre la requête, l'autre la
+> dissèque. Construire ici un second profileur serait de la duplication.
+>
+> Ce plan reste écrit au cas où un besoin propre à Excel apparaîtrait —
+> typiquement mesurer une opération qui ne passe *pas* par une requête
+> copiable. Ce n'est pas le cas aujourd'hui.
+
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** savoir ce qu'Excel demande réellement au serveur — combien de
