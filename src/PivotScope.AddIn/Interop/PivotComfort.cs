@@ -144,11 +144,14 @@ public static class PivotComfort
         var field = FindCubeField(pivot, cubeFieldName);
         var wanted = new HashSet<string>(shownLevelNames, StringComparer.Ordinal);
 
-        // On trace la requête avant/après : c'est la seule façon de savoir si
-        // un aller-retour serveur était réellement nécessaire. Requête
-        // identique = Excel pouvait servir depuis son cache ; requête modifiée
-        // = l'ensemble d'axe a changé et le serveur doit recalculer.
-        var mdxBefore = SafeMdx(pivot);
+        // Instrumentation. Attention à ce qu'elle mesure vraiment :
+        // PivotTable.MDX décrit la requête du DERNIER rafraîchissement effectué,
+        // et lève dans plusieurs cas documentés. Une comparaison seule ne
+        // distingue donc pas « requête inchangée » de « requête illisible » ni
+        // de « rafraîchissement pas encore fait ». On journalise l'état de
+        // lecture et la durée, sans lesquels la comparaison ne vaut rien.
+        var mdxBefore = ReadMdx(pivot);
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
 
         // Sans cette enveloppe, CHAQUE bascule provoque une reconstruction du
         // tableau et un aller-retour serveur : masquer un niveau sur une
@@ -193,18 +196,45 @@ public static class PivotComfort
             app.ScreenUpdating = true;
         }
 
-        var mdxAfter = SafeMdx(pivot);
-        FileLog.Write(string.Equals(mdxBefore, mdxAfter, StringComparison.Ordinal)
-            ? "Niveaux : requête MDX inchangée — Excel pouvait servir depuis son cache."
-            : $"Niveaux : requête MDX modifiée, un aller-retour serveur est " +
-              $"nécessaire.\n  avant : {mdxBefore}\n  après : {mdxAfter}");
+        var elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        var mdxAfter = ReadMdx(pivot);
+
+        var verdict = (mdxBefore.Readable, mdxAfter.Readable) switch
+        {
+            (false, _) or (_, false) =>
+                "requête MDX ILLISIBLE — la comparaison ne veut rien dire",
+            _ when mdxBefore.Text == mdxAfter.Text => "requête MDX identique",
+            _ => "requête MDX modifiée",
+        };
+
+        FileLog.Write(
+            $"Niveaux appliqués en {elapsed:F0} ms — {verdict} " +
+            $"(avant : {mdxBefore.Describe()}, après : {mdxAfter.Describe()}).");
+
+        if (mdxBefore.Readable && mdxAfter.Readable && mdxBefore.Text != mdxAfter.Text)
+            FileLog.Write($"  avant : {mdxBefore.Text}\n  après : {mdxAfter.Text}");
 
         return ListLevels(cubeFieldName);
     }
 
-    private static string SafeMdx(Xl.PivotTable pivot)
+    /// <summary>
+    /// Lecture instrumentée de PivotTable.MDX : on distingue explicitement
+    /// « illisible » de « vide », sans quoi une comparaison entre deux échecs
+    /// se lirait comme une égalité.
+    /// </summary>
+    private readonly record struct MdxReading(bool Readable, string Text)
     {
-        try { return pivot.MDX ?? string.Empty; } catch { return string.Empty; }
+        public string Describe() => Readable ? $"{Text.Length} car." : "illisible";
+    }
+
+    private static MdxReading ReadMdx(Xl.PivotTable pivot)
+    {
+        try { return new MdxReading(true, pivot.MDX ?? string.Empty); }
+        catch (Exception ex)
+        {
+            FileLog.Write("PivotTable.MDX illisible.", ex);
+            return new MdxReading(false, string.Empty);
+        }
     }
 
     /// <summary>
