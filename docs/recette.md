@@ -233,3 +233,4 @@ vu qu'au téléchargement.
 | 0.3.0 (phase 3) | 2026-07-28 | David | ✅ provenance d'une cellule, assistant MDX, menu contextuel |
 | 0.3.0 (livrable) | 2026-07-28 | David | ✅ **zip extrait dans un dossier isolé, chargé depuis là : fonctionne** — les assemblies managées sont bien fusionnées et les natives résolues |
 | 0.4.0 | 2026-07-28 | David | ✅ sélecteur de niveaux, suivi automatique du TCD, refonte du volet en cinq onglets, en-tête permanent, icône du ruban |
+| 0.5.0 | 2026-07-29 | David | ✅ interface bilingue FR/EN — bascule immédiate, choix conservé, réponses de l'IA dans la langue courante |
