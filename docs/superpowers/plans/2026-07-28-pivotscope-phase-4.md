@@ -54,32 +54,18 @@ duplique pas par confort, on écrit autre chose parce que le problème est autre
 
 ---
 
-### Task 1: Agrégation d'une capture
+### Task 1: ~~Agrégation d'une capture~~ — supprimée
 
-**Files:**
-- Create: `src/PivotScope.Core/Profiling/ServerActivity.cs`
-- Create: `src/PivotScope.Core/Profiling/ActivityAggregator.cs`
-- Test: `tests/PivotScope.Core.Tests/ActivityAggregatorTests.cs`
+`CubeScope.Core.Profiler.ProfileAggregator.Aggregate(events, fallbackTotalMs)`
+fait déjà exactement ce découpage — total = `QueryEnd`, SE = Σ `QuerySubcube`,
+FE = différence, hits de cache et d'agrégation comptés — et il est déjà testé
+là-bas. Écrire un second agrégateur aurait été un doublon de confort.
 
-**Interfaces:**
-- Produces:
-  - `sealed record TracedQuery(string Text, long DurationMs, DateTime EndedUtc)`
-  - `sealed record ServerActivity(int QueryCount, long TotalServerMs, long StorageEngineMs, int SubcubeCount, int CacheHits, IReadOnlyList<TracedQuery> Queries)`
-  - `ActivityAggregator.Aggregate(IEnumerable<ProfileEvent>)` → `ServerActivity`
-
-Toute la logique de découpage est ici, donc testable sans serveur :
-`QueryEnd.Duration` = total, Σ `QuerySubcube.Duration` = Storage Engine,
-Formula Engine = total − SE, et les `GetDataFromCache*` comptent les hits.
-
-- [ ] **Step 1: Écrire les tests qui échouent** — capture vide → activité nulle ;
-      un `QueryEnd` seul → 1 requête, SE à zéro ; `QueryEnd` + deux
-      `QuerySubcube` → SE = somme, FE = différence ; FE jamais négatif (un
-      serveur peut rendre des durées incohérentes) ; les événements « Begin »
-      sont ignorés.
-- [ ] **Step 2: Vérifier l'échec**
-- [ ] **Step 3: Implémenter**
-- [ ] **Step 4: Vérifier**
-- [ ] **Step 5: Commit**
+Mesure du 2026-07-28, qui justifie cette phase (voir Task 3) : la première
+application de niveaux a coûté **301 594 ms**, les quatre suivantes ~130 ms.
+La comparaison de `PivotTable.MDX` annonce « identique » dans les cinq cas —
+elle ne reflète donc pas la visibilité des niveaux et **ne peut pas répondre
+à la question**. Seule une trace serveur le peut.
 
 ---
 
