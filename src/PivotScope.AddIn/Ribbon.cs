@@ -1,3 +1,5 @@
+using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using ExcelDna.Integration.CustomUI;
 using PivotScope.AddIn.Diagnostics;
@@ -23,7 +25,8 @@ public class PivotScopeRibbon : ExcelRibbon
 
     public override string GetCustomUI(string ribbonId) =>
         """
-        <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui" onLoad="OnLoad">
+        <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui"
+                  onLoad="OnLoad" loadImage="LoadImage">
           <ribbon>
             <tabs>
               <tab id="tabPivotScope" label="PivotScope">
@@ -42,7 +45,7 @@ public class PivotScopeRibbon : ExcelRibbon
                                 screentip="Déposer plusieurs champs sans interroger le serveur"
                                 supertip="Enfoncé = différé. Rien n'est envoyé au serveur tant que vous n'avez pas appliqué. L'état reste visible ici, pour ne pas croire ensuite que le tableau est faux."
                                 size="large"
-                                imageMso="Pause"
+                                image="defer"
                                 getPressed="GetDeferLayoutPressed"
                                 onAction="OnToggleDeferLayout"/>
                   <button id="btnRefreshNow"
@@ -59,6 +62,35 @@ public class PivotScopeRibbon : ExcelRibbon
         """;
 
     public void OnLoad(IRibbonUI ribbon) => _ribbon = ribbon;
+
+    /// <summary>
+    /// Fournit nos propres icônes. Deux tentatives d'<c>imageMso</c> sont
+    /// restées vides sans le moindre message : ces identifiants échouent en
+    /// silence, et un nom valide en 16 × 16 ne rend rien sur un bouton
+    /// <c>size="large"</c>. Dessiner l'icône supprime la devinette — si elle ne
+    /// s'affiche pas, c'est la plomberie qui est en cause, pas un nom.
+    /// </summary>
+    public override object LoadImage(string imageId) => imageId switch
+    {
+        "defer" => PauseGlyph(),
+        _ => base.LoadImage(imageId),
+    };
+
+    /// <summary>Deux barres verticales, dans le vert de PivotScope.</summary>
+    private static Bitmap PauseGlyph()
+    {
+        var bitmap = new Bitmap(32, 32);
+        using var graphics = Graphics.FromImage(bitmap);
+
+        graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        graphics.Clear(Color.Transparent);
+
+        using var brush = new SolidBrush(Color.FromArgb(5, 150, 105));
+        graphics.FillRectangle(brush, 8, 6, 6, 20);
+        graphics.FillRectangle(brush, 18, 6, 6, 20);
+
+        return bitmap;
+    }
 
     /// <summary>Redemande au ruban de relire l'état affiché.</summary>
     internal static void Invalidate()
