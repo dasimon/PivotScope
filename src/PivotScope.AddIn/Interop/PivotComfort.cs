@@ -107,6 +107,18 @@ public static class PivotComfort
         return levels;
     }
 
+    private static void TryDrillDown(Xl.PivotField field)
+    {
+        try
+        {
+            if (!field.DrilledDown) field.DrilledDown = true;
+        }
+        catch (Exception ex)
+        {
+            FileLog.Write($"Niveau « {field.Name} » : développement refusé.", ex);
+        }
+    }
+
     private static bool IsMemberProperty(Xl.PivotField field)
     {
         try { return field.IsMemberProperty; } catch { return false; }
@@ -144,17 +156,30 @@ public static class PivotComfort
 
         try
         {
+            // Premier passage : afficher. On garantit ainsi qu'au moins un
+            // niveau reste visible avant d'en masquer.
+            var levels = new List<Xl.PivotField>();
             foreach (Xl.PivotField pf in field.PivotFields)
+                if (!IsMemberProperty(pf)) levels.Add(pf);
+
+            var firstVisible = -1;
+            for (var i = 0; i < levels.Count; i++)
             {
-                if (IsMemberProperty(pf)) continue;
-                if (wanted.Contains(pf.Name)) TrySetHidden(pf, false);
+                if (!wanted.Contains(levels[i].Name)) continue;
+                TrySetHidden(levels[i], false);
+                if (firstVisible < 0) firstVisible = i;
             }
 
-            foreach (Xl.PivotField pf in field.PivotFields)
-            {
-                if (IsMemberProperty(pf)) continue;
+            // Les niveaux masqués AU-DESSUS du premier visible doivent être
+            // développés, sinon le tableau reste replié sur eux et le niveau
+            // qu'on voulait voir n'apparaît jamais. Le dernier niveau n'est
+            // jamais développé : il n'a rien en dessous.
+            for (var i = 0; i < firstVisible && i < levels.Count - 1; i++)
+                TryDrillDown(levels[i]);
+
+            // Second passage : masquer.
+            foreach (var pf in levels)
                 if (!wanted.Contains(pf.Name)) TrySetHidden(pf, true);
-            }
         }
         finally
         {

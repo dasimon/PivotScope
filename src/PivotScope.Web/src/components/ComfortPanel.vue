@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { FieldVisibility, LevelVisibility, PivotContext } from '../types'
 
 const props = defineProps<{
@@ -26,11 +26,36 @@ const laidOutFields = computed(() =>
   props.fields.filter(f => f.area === 'row' || f.area === 'column'),
 )
 
+/**
+ * Sélection en attente. On n'applique PAS à chaque case : chaque application
+ * reconstruit le tableau, et c'est ce qui rendait la fonction pénible. Comme
+ * la boîte de dialogue de l'add-in d'origine, on coche librement puis on
+ * applique une seule fois.
+ */
+const draft = ref<Set<string>>(new Set())
+
+watch(
+  () => props.levels,
+  levels => { draft.value = new Set(levels.filter(l => l.shown).map(l => l.name)) },
+  { immediate: true, deep: true },
+)
+
 function toggleLevel(name: string, shown: boolean) {
-  const next = props.levels
-    .filter(l => (l.name === name ? shown : l.shown))
-    .map(l => l.name)
-  emit('setLevels', { cubeField: props.levelField, levels: next })
+  const next = new Set(draft.value)
+  if (shown) next.add(name)
+  else next.delete(name)
+  draft.value = next
+}
+
+const dirty = computed(() => {
+  const applied = new Set(props.levels.filter(l => l.shown).map(l => l.name))
+  if (applied.size !== draft.value.size) return true
+  for (const name of draft.value) if (!applied.has(name)) return true
+  return false
+})
+
+function applyLevels() {
+  emit('setLevels', { cubeField: props.levelField, levels: [...draft.value] })
 }
 
 const filter = ref('')
@@ -99,20 +124,32 @@ const hiddenCount = computed(() => props.fields.filter(f => !f.shownInFieldList)
         une sur le tableau.
       </p>
 
-      <ul v-else-if="levels.length" class="tree" style="padding-left: 0; list-style: none">
-        <li v-for="l in levels" :key="l.name">
-          <label class="row" style="gap: 6px">
-            <input
-              type="checkbox"
-              style="width: auto"
-              :checked="l.shown"
-              :disabled="busy"
-              @change="toggleLevel(l.name, ($event.target as HTMLInputElement).checked)"
-            />
-            <span :class="{ muted: !l.shown }">{{ l.caption }}</span>
-          </label>
-        </li>
-      </ul>
+      <template v-else-if="levels.length">
+        <ul class="tree" style="padding-left: 0; list-style: none">
+          <li v-for="l in levels" :key="l.name">
+            <label class="row" style="gap: 6px">
+              <input
+                type="checkbox"
+                style="width: auto"
+                :checked="draft.has(l.name)"
+                :disabled="busy"
+                @change="toggleLevel(l.name, ($event.target as HTMLInputElement).checked)"
+              />
+              <span :class="{ muted: !draft.has(l.name) }">{{ l.caption }}</span>
+            </label>
+          </li>
+        </ul>
+
+        <div class="row">
+          <button :disabled="busy || !dirty || draft.size === 0" @click="applyLevels">
+            {{ busy ? 'Application…' : 'Appliquer les niveaux' }}
+          </button>
+          <span v-if="draft.size === 0" class="muted">
+            Gardez au moins un niveau.
+          </span>
+          <span v-else-if="dirty" class="muted">Modifications non appliquées.</span>
+        </div>
+      </template>
 
       <div class="row">
         <h2 style="flex: 1; margin: 0">Champs de la liste</h2>
