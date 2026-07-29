@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { CubeMeta } from '../types'
 
 const props = defineProps<{ meta: CubeMeta | null; busy: boolean }>()
 defineEmits<{ load: [] }>()
 
+const { t } = useI18n()
 const filter = ref('')
 
 const matches = (text: string) =>
@@ -34,26 +36,25 @@ const folders = computed(() =>
 <template>
   <div class="stack">
     <div class="row">
-      <h2 style="flex: 1">Métadonnées du cube</h2>
+      <h2 style="flex: 1">{{ t('metadata.title') }}</h2>
       <button class="secondary" :disabled="busy" @click="$emit('load')">
-        {{ busy ? 'Chargement…' : meta ? 'Recharger' : 'Charger' }}
+        {{ busy ? t('common.loading') : meta ? t('common.reload') : t('common.load') }}
       </button>
     </div>
 
-    <p v-if="!meta" class="notice">
-      Les métadonnées ne sont pas chargées. Elles nécessitent une connexion au
-      cube, qui n'est ouverte qu'à la demande.
-    </p>
+    <p v-if="!meta" class="notice">{{ t('metadata.notLoaded') }}</p>
 
     <template v-else>
-      <input v-model="filter" placeholder="Filtrer dimensions et mesures…" />
+      <input v-model="filter" :placeholder="t('metadata.filter')" />
 
       <details open>
-        <summary>Mesures ({{ folders.length }} dossiers)</summary>
+        <summary>{{ t('metadata.measures', { count: folders.length }) }}</summary>
         <ul class="tree">
           <li v-for="f in folders" :key="f.folder">
             <details>
-              <summary>{{ f.folder || '(racine)' }} — {{ f.measures.length }}</summary>
+              <summary>
+                {{ f.folder || t('metadata.root') }} — {{ f.measures.length }}
+              </summary>
               <ul class="tree">
                 <li v-for="m in f.measures" :key="m.uniqueName">
                   {{ m.name }}
@@ -66,7 +67,7 @@ const folders = computed(() =>
       </details>
 
       <details open>
-        <summary>Dimensions ({{ dimensions.length }})</summary>
+        <summary>{{ t('metadata.dimensions', { count: dimensions.length }) }}</summary>
         <ul class="tree">
           <li v-for="d in dimensions" :key="d.uniqueName">
             <details>

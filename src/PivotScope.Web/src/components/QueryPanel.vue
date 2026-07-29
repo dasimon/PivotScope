@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import MdxEditor from './MdxEditor.vue'
 import type { PivotContext, QueryRunResult } from '../types'
 
@@ -9,6 +10,8 @@ const emit = defineEmits<{
   run: [payload: { mdx: string; newSheet: boolean; includeHeaders: boolean }]
   cancel: []
 }>()
+
+const { t } = useI18n()
 
 const mdx = ref('')
 const newSheet = ref(true)
@@ -42,7 +45,7 @@ defineExpose({
 
 <template>
   <div class="stack">
-    <h2>Requête MDX</h2>
+    <h2>{{ t('query.title') }}</h2>
 
     <p v-if="!context?.isOlap" class="notice">
       {{ context?.diagnostic ?? 'Aucun tableau croisé dynamique OLAP actif.' }}
@@ -54,22 +57,22 @@ defineExpose({
       <div class="row">
         <label class="row" style="gap: 4px">
           <input type="checkbox" v-model="newSheet" style="width: auto" />
-          Nouvelle feuille
+          {{ t('query.newSheet') }}
         </label>
         <label class="row" style="gap: 4px">
           <input type="checkbox" v-model="includeHeaders" style="width: auto" />
-          En-têtes
+          {{ t('query.headers') }}
         </label>
       </div>
 
       <div class="row">
         <button :disabled="busy || !mdx.trim()" @click="run">
-          {{ busy ? 'Exécution…' : 'Exécuter (F5)' }}
+          {{ busy ? t('query.running') : t('query.run') }}
         </button>
         <!-- Arrêter appelle AdomdCommand.Cancel() : le serveur cesse
              réellement de calculer, on n'abandonne pas juste l'attente. -->
-        <button v-if="busy" class="danger" @click="$emit('cancel')">Arrêter</button>
-        <button v-else class="secondary" @click="template">Modèle</button>
+        <button v-if="busy" class="danger" @click="$emit('cancel')">{{ t('common.stop') }}</button>
+        <button v-else class="secondary" @click="template">{{ t('query.template') }}</button>
       </div>
 
       <p v-if="!newSheet" class="muted">
@@ -78,12 +81,14 @@ defineExpose({
       </p>
 
       <div v-if="result" class="stack">
-        <p v-if="result.cancelled" class="muted">Requête arrêtée.</p>
+        <p v-if="result.cancelled" class="muted">{{ t('query.cancelled') }}</p>
         <template v-else>
           <p>
-            <strong>{{ result.rows }}</strong> ligne(s) ×
-            <strong>{{ result.columns }}</strong> colonne(s) écrites en
-            {{ result.durationMs }} ms.
+            {{ t('query.written', {
+              rows: result.rows,
+              columns: result.columns,
+              ms: result.durationMs,
+            }) }}
           </p>
           <p class="leaf">{{ result.address }}</p>
         </template>

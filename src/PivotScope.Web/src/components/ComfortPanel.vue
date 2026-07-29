@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { FieldVisibility, LevelVisibility, PivotContext } from '../types'
 
 const props = defineProps<{
@@ -20,6 +21,8 @@ const emit = defineEmits<{
   pickLevelField: [cubeField: string]
   setLevels: [payload: { cubeField: string; levels: string[] }]
 }>()
+
+const { t } = useI18n()
 
 /** Seules les hiérarchies posées sur le tableau ont des niveaux affichables. */
 const laidOutFields = computed(() =>
@@ -70,10 +73,10 @@ const hiddenCount = computed(() => props.fields.filter(f => !f.shownInFieldList)
 
 <template>
   <div class="stack">
-    <h2>Construction du tableau</h2>
+    <h2>{{ t('comfort.title') }}</h2>
 
     <p v-if="!context?.isOlap" class="notice">
-      {{ context?.diagnostic ?? 'Aucun tableau croisé dynamique OLAP actif.' }}
+      {{ context?.diagnostic ?? t('common.noPivot') }}
     </p>
 
     <template v-else>
@@ -85,34 +88,31 @@ const hiddenCount = computed(() => props.fields.filter(f => !f.shownInFieldList)
           :disabled="busy"
           @change="$emit('setAutoRefresh', !($event.target as HTMLInputElement).checked)"
         />
-        Différer la mise en page
+        {{ t('comfort.defer') }}
       </label>
       <p class="muted">
-        Activez-le pour déposer plusieurs champs sans attendre le serveur à
-        chaque geste, puis appliquez tout d'un coup. L'état reste visible dans le
-        ruban : on ne peut pas l'oublier et croire ensuite que le tableau est faux.
+        {{ t('comfort.deferHint') }}
       </p>
 
       <div class="row">
         <button :disabled="busy" @click="emit('refreshNow')">
-          {{ busy ? 'Actualisation…' : 'Appliquer et actualiser' }}
+          {{ busy ? t('comfort.refreshing') : t('comfort.refreshNow') }}
         </button>
       </div>
 
-      <h2>Niveaux affichés</h2>
+      <h2>{{ t('comfort.levels') }}</h2>
       <p class="muted">
-        Une hiérarchie à quatre ou cinq niveaux les impose tous. Cochez ceux que
-        vous voulez voir : Excel n'offre nulle part ce choix.
+        {{ t('comfort.levelsHint') }}
       </p>
 
       <label>
-        Hiérarchie posée sur le tableau
+        {{ t('comfort.hierarchy') }}
         <select
           :value="levelField"
           :disabled="busy || !laidOutFields.length"
           @change="emit('pickLevelField', ($event.target as HTMLSelectElement).value)"
         >
-          <option value="">— choisir —</option>
+          <option value="">{{ t('common.choose') }}</option>
           <option v-for="f in laidOutFields" :key="f.name" :value="f.name">
             {{ f.caption }} ({{ f.area }})
           </option>
@@ -120,8 +120,7 @@ const hiddenCount = computed(() => props.fields.filter(f => !f.shownInFieldList)
       </label>
 
       <p v-if="!laidOutFields.length" class="notice">
-        Aucune hiérarchie en ligne ou en colonne. Chargez les champs, ou posez-en
-        une sur le tableau.
+        {{ t('comfort.noHierarchy') }}
       </p>
 
       <template v-else-if="levels.length">
@@ -142,40 +141,39 @@ const hiddenCount = computed(() => props.fields.filter(f => !f.shownInFieldList)
 
         <div class="row">
           <button :disabled="busy || !dirty || draft.size === 0" @click="applyLevels">
-            {{ busy ? 'Application…' : 'Appliquer les niveaux' }}
+            {{ busy ? t('common.applying') : t('comfort.applyLevels') }}
           </button>
           <span v-if="draft.size === 0" class="muted">
-            Gardez au moins un niveau.
+            {{ t('comfort.keepOneLevel') }}
           </span>
-          <span v-else-if="dirty" class="muted">Modifications non appliquées.</span>
+          <span v-else-if="dirty" class="muted">{{ t('comfort.pendingChanges') }}</span>
         </div>
       </template>
 
       <div class="row">
-        <h2 style="flex: 1; margin: 0">Champs de la liste</h2>
+        <h2 style="flex: 1; margin: 0">{{ t('comfort.fieldList') }}</h2>
         <button class="secondary" :disabled="busy" @click="$emit('load')">
-          {{ busy ? '…' : fields.length ? 'Recharger' : 'Charger' }}
+          {{ busy ? t('common.loading') : fields.length ? t('common.reload') : t('common.load') }}
         </button>
       </div>
 
       <p v-if="!fields.length" class="notice">
-        Chargez les champs pour choisir ceux qui restent visibles dans la liste
-        de champs du tableau croisé dynamique.
+        {{ t('comfort.fieldListEmpty') }}
       </p>
 
       <template v-else>
-        <input v-model="filter" placeholder="Filtrer les champs…" />
+        <input v-model="filter" :placeholder="t('comfort.filterFields')" />
 
         <div class="row">
           <span class="muted" style="flex: 1">
-            {{ hiddenCount }} masqué(s) sur {{ fields.length }}
+            {{ t('comfort.hiddenCount', { hidden: hiddenCount, total: fields.length }) }}
           </span>
           <button
             class="secondary"
             :disabled="busy || hiddenCount === 0"
             @click="$emit('showAll')"
           >
-            Tout réafficher
+            {{ t('comfort.showAll') }}
           </button>
         </div>
 
@@ -199,8 +197,7 @@ const hiddenCount = computed(() => props.fields.filter(f => !f.shownInFieldList)
         </ul>
 
         <p class="muted">
-          Un champ posé sur le tableau ne peut pas être masqué de la liste :
-          retirez-le d'abord de la disposition.
+          {{ t('comfort.laidOutHint') }}
         </p>
       </template>
     </template>

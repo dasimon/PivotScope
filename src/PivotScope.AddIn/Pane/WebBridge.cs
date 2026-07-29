@@ -113,7 +113,8 @@ internal sealed class WebBridge : IDisposable
                 return new
                 {
                     cancelled = false,
-                    markdown = await session.RunAiAsync(action, prompt, "fr", cts.Token),
+                    markdown = await session.RunAiAsync(
+                        action, prompt, Optional(p, "lang") ?? "fr", cts.Token),
                 };
             }
             catch (Exception ex) when (cts.IsCancellationRequested)

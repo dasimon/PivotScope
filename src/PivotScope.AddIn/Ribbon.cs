@@ -23,34 +23,50 @@ public class PivotScopeRibbon : ExcelRibbon
 {
     private static IRibbonUI? _ribbon;
 
-    public override string GetCustomUI(string ribbonId) =>
-        """
+    public override string GetCustomUI(string ribbonId)
+    {
+        string T(string fr, string en) => System.Security.SecurityElement.Escape(
+            RibbonText.T(fr, en))!;
+
+        // Le XML est assemblé plutôt qu'écrit d'un bloc : les libellés doivent
+        // suivre la langue d'Excel, et tout texte inséré est échappé — une
+        // apostrophe ou une esperluette non échappée rend le ruban invalide,
+        // et Excel l'ignore alors en silence.
+        return $"""
         <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui"
                   onLoad="OnLoad" loadImage="LoadImage">
           <ribbon>
             <tabs>
               <tab id="tabPivotScope" label="PivotScope">
-                <group id="grpPane" label="Analyse">
+                <group id="grpPane" label="{T("Analyse", "Analysis")}">
                   <button id="btnPane"
-                          label="Volet PivotScope"
-                          screentip="Ouvrir le volet PivotScope"
-                          supertip="Affiche le MDX du tableau croisé dynamique actif, l'explorateur de métadonnées du cube, l'éditeur de requêtes et le filtre par liste."
+                          label="{T("Volet PivotScope", "PivotScope pane")}"
+                          screentip="{T("Ouvrir le volet PivotScope", "Open the PivotScope pane")}"
+                          supertip="{T(
+                              "Affiche le MDX du tableau croisé dynamique actif, l'explorateur de métadonnées du cube, l'éditeur de requêtes et le filtre par liste.",
+                              "Shows the active PivotTable's MDX, the cube metadata explorer, the query editor and the filter by list.")}"
                           size="large"
                           imageMso="TableOfContentsGallery"
                           onAction="OnOpenPane"/>
                 </group>
-                <group id="grpComfort" label="Construction">
+                <group id="grpComfort" label="{T("Construction", "Building")}">
                   <toggleButton id="btnDeferLayout"
-                                label="Différer la mise en page"
-                                screentip="Déposer plusieurs champs sans interroger le serveur"
-                                supertip="Enfoncé = différé. Rien n'est envoyé au serveur tant que vous n'avez pas appliqué. L'état reste visible ici, pour ne pas croire ensuite que le tableau est faux."
+                                label="{T("Différer la mise en page", "Defer layout update")}"
+                                screentip="{T(
+                                    "Déposer plusieurs champs sans interroger le serveur",
+                                    "Drop several fields without querying the server")}"
+                                supertip="{T(
+                                    "Enfoncé = différé. Rien n'est envoyé au serveur tant que vous n'avez pas appliqué. L'état reste visible ici, pour ne pas croire ensuite que le tableau est faux.",
+                                    "Pressed = deferred. Nothing is sent to the server until you apply. The state stays visible here, so you cannot conclude the table is wrong.")}"
                                 size="large"
                                 image="defer"
                                 getPressed="GetDeferLayoutPressed"
                                 onAction="OnToggleDeferLayout"/>
                   <button id="btnRefreshNow"
-                          label="Appliquer et actualiser"
-                          screentip="Appliquer les changements en attente et interroger le serveur"
+                          label="{T("Appliquer et actualiser", "Apply and refresh")}"
+                          screentip="{T(
+                              "Appliquer les changements en attente et interroger le serveur",
+                              "Apply pending changes and query the server")}"
                           size="large"
                           imageMso="RefreshAll"
                           onAction="OnRefreshNow"/>
@@ -60,6 +76,7 @@ public class PivotScopeRibbon : ExcelRibbon
           </ribbon>
         </customUI>
         """;
+    }
 
     public void OnLoad(IRibbonUI ribbon) => _ribbon = ribbon;
 

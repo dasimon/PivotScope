@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { call, isHosted, onEvent } from './bridge'
+import { currentLocale } from './i18n'
 import { setCubeMeta } from './mdx-completion'
 import type {
   AiAction, AiRunResult, CalculationDefinition, CellProvenance, CubeMeta,
@@ -22,7 +24,10 @@ import AiPanel from './components/AiPanel.vue'
  * précédents débordaient d'un volet de 480 px : le dernier n'était atteignable
  * qu'en devinant qu'il existait.
  */
-type Tab = 'tableau' | 'requete' | 'calculs' | 'provenance' | 'ia'
+const TABS = ['tableau', 'requete', 'calculs', 'provenance', 'ia'] as const
+type Tab = (typeof TABS)[number]
+
+const { t } = useI18n()
 
 const tab = ref<Tab>('tableau')
 const context = ref<PivotContext | null>(null)
@@ -85,7 +90,11 @@ function explainExpression(expression: string) {
 
 async function runAi(payload: { action: AiAction; mdx: string }) {
   aiAnswer.value = null
-  const result = await guard(busyAi, () => call<AiRunResult>('ai.run', payload))
+  // La langue de l'interface est celle attendue dans la reponse : sinon on
+  // lit une explication anglaise dans un volet francais, ou l'inverse.
+  const result = await guard(busyAi, () =>
+    call<AiRunResult>('ai.run', { ...payload, lang: currentLocale() }),
+  )
   if (result && !result.cancelled) aiAnswer.value = result.markdown
 }
 
@@ -304,15 +313,25 @@ function onPivotChanged(payload: Record<string, unknown>) {
 }
 
 let unsubscribe: (() => void) | undefined
+let unsubscribeTab: (() => void) | undefined
 
 onMounted(() => {
   if (!isHosted) {
-    error.value = "Cette page doit être ouverte depuis le volet PivotScope d'Excel."
+    error.value = t('app.notHosted')
     return
   }
 
   void loadContext()
   unsubscribe = onEvent('pivotChanged', onPivotChanged)
+
+  // Le menu contextuel d'Excel demande un onglet précis : sans cet abonnement,
+  // « D'où vient ce chiffre ? » ouvrait le volet sans y aller.
+  unsubscribeTab = onEvent('showTab', payload => {
+    const target = payload.tab
+    if (typeof target === 'string' && TABS.includes(target as Tab)) {
+      tab.value = target as Tab
+    }
+  })
 
   // L'IA ne dépend que de l'environnement : on interroge son état une fois,
   // pour que le panneau se dégrade proprement plutôt qu'à l'usage.
@@ -324,13 +343,14 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.clearTimeout(followTimer)
   unsubscribe?.()
+  unsubscribeTab?.()
 })
 </script>
 
 <template>
   <div v-if="error" class="banner">
     <span style="flex: 1">{{ error }}</span>
-    <button @click="error = null" title="Masquer">×</button>
+    <button :title="t('app.hide')" @click="error = null">×</button>
   </div>
 
   <!-- En-tête permanent : on sait toujours sur quoi on agit, quel que soit
@@ -339,13 +359,13 @@ onBeforeUnmount(() => {
   <PivotHeader :context="context" :busy="busyContext" @refresh="loadContext" />
 
   <nav class="tabs">
-    <button :class="{ active: tab === 'tableau' }" @click="tab = 'tableau'">Tableau</button>
-    <button :class="{ active: tab === 'requete' }" @click="tab = 'requete'">Requête</button>
-    <button :class="{ active: tab === 'calculs' }" @click="tab = 'calculs'">Calculs</button>
+    <button :class="{ active: tab === 'tableau' }" @click="tab = 'tableau'">{{ t('tabs.table') }}</button>
+    <button :class="{ active: tab === 'requete' }" @click="tab = 'requete'">{{ t('tabs.query') }}</button>
+    <button :class="{ active: tab === 'calculs' }" @click="tab = 'calculs'">{{ t('tabs.calc') }}</button>
     <button :class="{ active: tab === 'provenance' }" @click="tab = 'provenance'">
-      Ce chiffre
+      {{ t('tabs.provenance') }}
     </button>
-    <button :class="{ active: tab === 'ia' }" @click="tab = 'ia'">IA</button>
+    <button :class="{ active: tab === 'ia' }" @click="tab = 'ia'">{{ t('tabs.ai') }}</button>
   </nav>
 
   <main class="body">
@@ -392,7 +412,7 @@ onBeforeUnmount(() => {
       />
 
       <details>
-        <summary>Métadonnées du cube</summary>
+        <summary>{{ t('metadata.title') }}</summary>
         <MetadataTree :meta="meta" :busy="busyMeta" @load="loadMeta" />
       </details>
     </div>

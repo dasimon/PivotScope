@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { CubeMeta, FilterListResult, PivotContext } from '../types'
 
 const props = defineProps<{
@@ -12,6 +13,8 @@ const emit = defineEmits<{
   apply: [payload: { cubeField: string; level: string; keys: string }]
   loadMeta: []
 }>()
+
+const { t } = useI18n()
 
 const cubeField = ref('')
 const level = ref('')
@@ -60,17 +63,17 @@ defineExpose({
 
 <template>
   <div class="stack">
-    <h2>Filtrer par une liste</h2>
+    <h2>{{ t('filter.title') }}</h2>
 
     <p v-if="!context?.isOlap" class="notice">
-      {{ context?.diagnostic ?? 'Aucun tableau croisé dynamique OLAP actif.' }}
+      {{ context?.diagnostic ?? t('common.noPivot') }}
     </p>
 
     <template v-else>
       <label>
-        Champ du tableau croisé dynamique
+        {{ t('filter.field') }}
         <select v-model="cubeField">
-          <option value="">— choisir —</option>
+          <option value="">{{ t('common.choose') }}</option>
           <option v-for="f in filterableFields" :key="f.uniqueName" :value="f.uniqueName">
             {{ f.caption }} ({{ f.area }})
           </option>
@@ -78,9 +81,9 @@ defineExpose({
       </label>
 
       <label>
-        Niveau contenant les clés
+        {{ t('filter.level') }}
         <select v-model="level" :disabled="levels.length === 0">
-          <option value="">— choisir —</option>
+          <option value="">{{ t('common.choose') }}</option>
           <option v-for="l in levels" :key="l.uniqueName" :value="l.uniqueName">
             {{ l.name }}
           </option>
@@ -88,48 +91,34 @@ defineExpose({
       </label>
 
       <p v-if="cubeField && levels.length === 0" class="notice">
-        Chargez les métadonnées du cube pour lister les niveaux de ce champ.
-        <button class="secondary" @click="$emit('loadMeta')">Charger</button>
+        {{ t('filter.loadMetaFirst') }}
+        <button class="secondary" @click="$emit('loadMeta')">{{ t('common.load') }}</button>
       </p>
 
       <label>
-        Valeurs à conserver ({{ keyCount }})
-        <textarea
-          v-model="keys"
-          rows="8"
-          placeholder="Une valeur par ligne — clé (PRD014) ou libellé (Aurore)"
-        />
+        {{ t('filter.values', { count: keyCount }) }}
+        <textarea v-model="keys" rows="8" :placeholder="t('filter.placeholder')" />
       </label>
-      <p class="muted">
-        Clés et libellés sont acceptés. La clé est essayée d'abord ; à défaut,
-        le libellé est recherché parmi les membres du niveau choisi.
-      </p>
+      <p class="muted">{{ t('filter.hint') }}</p>
 
       <div class="row">
         <button :disabled="!canApply" @click="apply">
-          {{ busy ? 'Application…' : 'Appliquer le filtre' }}
+          {{ busy ? t('common.applying') : t('filter.action') }}
         </button>
       </div>
 
       <div v-if="result" class="stack">
-        <p>
-          <strong>{{ result.applied }}</strong> membre(s) appliqué(s).
-        </p>
+        <p><strong>{{ t('filter.applied', { count: result.applied }) }}</strong></p>
+
         <template v-if="result.unresolved.length">
-          <p class="muted">
-            {{ result.unresolved.length }} valeur(s) introuvable(s) à ce niveau,
-            ni comme clé ni comme libellé :
-          </p>
+          <p class="muted">{{ t('filter.unresolved', { count: result.unresolved.length }) }}</p>
           <div class="chips">
             <span v-for="k in result.unresolved" :key="k" class="chip">{{ k }}</span>
           </div>
         </template>
 
         <template v-if="result.ambiguous.length">
-          <p class="muted">
-            {{ result.ambiguous.length }} libellé(s) porté(s) par plusieurs
-            membres — non appliqué(s), collez la clé pour lever le doute :
-          </p>
+          <p class="muted">{{ t('filter.ambiguous', { count: result.ambiguous.length }) }}</p>
           <div class="chips">
             <span v-for="k in result.ambiguous" :key="k" class="chip warn">{{ k }}</span>
           </div>

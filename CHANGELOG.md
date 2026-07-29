@@ -3,6 +3,20 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Bilingual interface, French and English.** A selector sits in the permanent
+  header; the choice survives across sessions. `en.ts` is typed `typeof fr`, so
+  a forgotten key is a compile error rather than an empty string discovered in
+  production. AI answers follow the chosen language.
+- Ribbon and context menu follow **Excel's** language, fixed at load time — they
+  live outside the pane and the ribbon is only built once.
+
+SSAS errors and Excel's own messages stay in the server's language; that is
+outside the add-in's control.
+
 ## [0.4.0] — 2026-07-28
 
 ### Added

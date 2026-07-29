@@ -207,6 +207,18 @@ vu qu'au téléchargement.
 - [ ] Ouvrir *Requête* → l'explorateur de métadonnées est là, replié
 - [ ] Hors TCD, changer d'onglet ne déclenche **aucun** appel serveur
 
+## Interface bilingue
+
+- [ ] Le sélecteur **FR / EN** est dans l'en-tête, visible depuis tous les onglets
+- [ ] Basculer en EN traduit **immédiatement** onglets, boutons et messages —
+      sans recharger le volet
+- [ ] Fermer et rouvrir Excel : la langue choisie est **conservée**
+- [ ] Les messages d'erreur venant d'Excel ou de SSAS **restent dans la langue
+      du serveur** — hors de notre contrôle, c'est attendu
+- [ ] En EN, une réponse de l'assistant IA arrive **en anglais**
+- [ ] Le ruban et le menu contextuel suivent la langue d'**Excel**, pas celle du
+      volet : c'est le compromis assumé, le ruban n'est construit qu'une fois
+
 ## Déchargement
 
 - [ ] Fermer Excel : « PivotScope déchargé » dans le log

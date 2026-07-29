@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import MdxEditor from './MdxEditor.vue'
 import type {
   CalculationKind, CubeMeta, ExistingCalculation, PivotContext, StoredCalculation,
@@ -21,6 +22,8 @@ const emit = defineEmits<{
   loadLibrary: []
   removeFromLibrary: [id: number]
 }>()
+
+const { t } = useI18n()
 
 type Definition = {
   name: string
@@ -80,31 +83,31 @@ function load(stored: StoredCalculation) {
 
 <template>
   <div class="stack">
-    <h2>Calculs du tableau</h2>
+    <h2>{{ t('calc.title') }}</h2>
 
     <p v-if="!context?.isOlap" class="notice">
-      {{ context?.diagnostic ?? 'Aucun tableau croisé dynamique OLAP actif.' }}
+      {{ context?.diagnostic ?? t('common.noPivot') }}
     </p>
 
     <template v-else>
       <label>
-        Nature
+        {{ t('calc.kind') }}
         <select v-model="draft.kind">
-          <option value="Measure">Mesure calculée</option>
-          <option value="Member">Membre calculé</option>
-          <option value="Set">Ensemble nommé</option>
+          <option value="Measure">{{ t('calc.kindMeasure') }}</option>
+          <option value="Member">{{ t('calc.kindMember') }}</option>
+          <option value="Set">{{ t('calc.kindSet') }}</option>
         </select>
       </label>
 
       <label>
-        Nom
-        <input v-model="draft.name" placeholder="Marge nette" />
+        {{ t('calc.name') }}
+        <input v-model="draft.name" :placeholder="t('calc.namePlaceholder')" />
       </label>
 
       <label v-if="isMember">
-        Hiérarchie parente
+        {{ t('calc.parentHierarchy') }}
         <select v-model="draft.parentHierarchy">
-          <option value="">— choisir —</option>
+          <option value="">{{ t('common.choose') }}</option>
           <option v-for="h in hierarchies" :key="h.value" :value="h.value">
             {{ h.label }}
           </option>
@@ -112,65 +115,62 @@ function load(stored: StoredCalculation) {
       </label>
 
       <label v-if="isMeasure">
-        Dossier d'affichage
-        <input v-model="draft.displayFolder" placeholder="Rentabilité (facultatif)" />
+        {{ t('calc.displayFolder') }}
+        <input v-model="draft.displayFolder" :placeholder="t('calc.displayFolderPlaceholder')" />
       </label>
 
       <template v-if="isMember">
         <label>
-          Format de nombre
-          <input v-model="draft.numberFormat" placeholder="#,##0.00 (facultatif)" />
+          {{ t('calc.numberFormat') }}
+          <input v-model="draft.numberFormat" :placeholder="t('calc.numberFormatPlaceholder')" />
         </label>
-        <p class="muted">
-          Excel ne propose aucune interface pour formater un membre calculé —
-          seule une macro peut le faire. PivotScope le fait ici.
-        </p>
+        <p class="muted">{{ t('calc.numberFormatHint') }}</p>
       </template>
 
       <!-- Surtout pas de <label> autour de l'éditeur : un label intercepte les
            clics et redirige le focus vers son premier contrôle, ce qui empêche
            Monaco de le prendre. Constaté en recette. -->
       <div class="field">
-        <span class="field-label">Expression MDX</span>
+        <span class="field-label">{{ t('calc.expression') }}</span>
         <MdxEditor v-model="draft.expression" height="180px" @run="apply" />
       </div>
 
       <label>
-        Ordre de résolution
+        {{ t('calc.solveOrder') }}
         <input v-model.number="draft.solveOrder" type="number" />
       </label>
 
       <label v-if="isMeasure" class="row" style="gap: 6px">
         <input type="checkbox" v-model="addToPivot" style="width: auto" />
-        Ajouter au tableau après création
+        {{ t('calc.addToPivot') }}
       </label>
 
       <div class="row">
         <button :disabled="!canApply" @click="apply">
-          {{ busy ? 'Application…' : 'Créer / remplacer' }}
+          {{ busy ? t('common.applying') : t('calc.create') }}
         </button>
         <button class="secondary" :disabled="!canApply" @click="$emit('save', draft)">
-          Enregistrer dans la bibliothèque
+          {{ t('calc.saveToLibrary') }}
         </button>
       </div>
 
       <div class="row">
-        <h2 style="flex: 1; margin: 0">Sur ce tableau</h2>
+        <h2 style="flex: 1; margin: 0">{{ t('calc.onThisTable') }}</h2>
         <button class="secondary" :disabled="busy" @click="$emit('load')">
-          {{ calculations.length ? 'Recharger' : 'Charger' }}
+          {{ calculations.length ? t('common.reload') : t('common.load') }}
         </button>
       </div>
 
-      <p v-if="!calculations.length" class="notice">Aucun calcul sur ce tableau.</p>
+      <p v-if="!calculations.length" class="notice">{{ t('calc.none') }}</p>
       <ul v-else class="tree" style="padding-left: 0; list-style: none">
         <li v-for="c in calculations" :key="c.name">
           <div class="row">
             <span style="flex: 1">
               {{ c.name }}
-              <span class="leaf">{{ c.kind }}{{ c.isValid ? '' : ' — invalide' }}</span>
+              <span class="leaf">{{ c.kind }}{{ c.isValid ? '' : ' — ' + t('calc.invalid') }}</span>
             </span>
             <button class="danger" :disabled="busy" @click="$emit('remove', c.name)">
-              Supprimer
+              {{ t('common.remove') }}
             </button>
           </div>
           <div class="leaf">{{ c.formula }}</div>
@@ -178,26 +178,23 @@ function load(stored: StoredCalculation) {
       </ul>
 
       <div class="row">
-        <h2 style="flex: 1; margin: 0">Bibliothèque</h2>
+        <h2 style="flex: 1; margin: 0">{{ t('calc.library') }}</h2>
         <button class="secondary" :disabled="busy" @click="$emit('loadLibrary')">
-          {{ library.length ? 'Recharger' : 'Charger' }}
+          {{ library.length ? t('common.reload') : t('common.load') }}
         </button>
       </div>
 
-      <p v-if="!library.length" class="notice">
-        La bibliothèque est vide. Enregistrez un calcul pour le retrouver dans un
-        autre classeur.
-      </p>
+      <p v-if="!library.length" class="notice">{{ t('calc.libraryEmpty') }}</p>
       <ul v-else class="tree" style="padding-left: 0; list-style: none">
         <li v-for="s in library" :key="s.id">
           <div class="row">
             <span style="flex: 1">
               {{ s.definition.name }}
-              <span class="leaf">{{ s.cube ?? 'tous cubes' }}</span>
+              <span class="leaf">{{ s.cube ?? t('calc.allCubes') }}</span>
             </span>
-            <button class="secondary" :disabled="busy" @click="load(s)">Charger</button>
+            <button class="secondary" :disabled="busy" @click="load(s)">{{ t('common.load') }}</button>
             <button class="danger" :disabled="busy" @click="$emit('removeFromLibrary', s.id)">
-              Supprimer
+              {{ t('common.remove') }}
             </button>
           </div>
         </li>

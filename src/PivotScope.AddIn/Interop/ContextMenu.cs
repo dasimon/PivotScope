@@ -28,11 +28,12 @@ public static class ContextMenu
             var app = (Xl.Application)ExcelDnaUtil.Application;
             var bar = app.CommandBars[PivotContextMenu];
 
-            Add(bar, "Ouvrir le volet PivotScope", beginGroup: true, () => PaneManager.Show());
-            Add(bar, "Filtrer par une liste…", beginGroup: false,
-                () => PaneManager.ShowOn("filtre"));
-            Add(bar, "D'où vient ce chiffre ?", beginGroup: false,
-                () => PaneManager.ShowOn("provenance"));
+            Add(bar, RibbonText.T("Ouvrir le volet PivotScope", "Open the PivotScope pane"),
+                beginGroup: true, () => PaneManager.Show());
+            Add(bar, RibbonText.T("Filtrer par une liste…", "Filter by a list…"),
+                beginGroup: false, () => PaneManager.ShowOn("tableau"));
+            Add(bar, RibbonText.T("D'où vient ce chiffre ?", "Where does this figure come from?"),
+                beginGroup: false, () => PaneManager.ShowOn("provenance"));
         }
         catch (Exception ex)
         {

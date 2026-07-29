@@ -190,6 +190,21 @@ montre la requête, l'autre la dissèque.
 **Clear PivotTable Cache** reste hors périmètre : seule fonction de la feuille
 de route qui modifie la connexion du classeur de l'utilisateur.
 
+### Interface bilingue
+
+- `en.ts` est typé **`typeof fr`** : une clé oubliée devient une erreur de
+  compilation, pas un texte vide découvert en production.
+- **Ne jamais écrire `|` dans un message** vue-i18n : c'est le séparateur de
+  pluriel, le texte serait coupé en silence.
+- Le ruban et le menu contextuel **ne peuvent pas** passer par vue-i18n : ils
+  vivent dans Excel. Ils suivent la langue d'**Excel** (`LanguageSettings`),
+  fixée au chargement — un ruban qui changerait de langue en cours de session
+  demanderait de le reconstruire entièrement, pour une quinzaine de mots.
+- Le XML du ruban est **assemblé et échappé** (`SecurityElement.Escape`) : une
+  apostrophe non échappée rend le ruban invalide, et Excel l'ignore en silence.
+- Restent dans la langue du serveur, hors de notre contrôle : les erreurs SSAS
+  et les messages d'Excel.
+
 ### Sur la lenteur d'un TCD, ce qu'il faut savoir
 
 - Un TCD OLAP **froid** paie le prix entier de sa requête ; ensuite tout est en
