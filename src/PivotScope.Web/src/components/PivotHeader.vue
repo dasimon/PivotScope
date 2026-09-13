@@ -14,8 +14,8 @@ function onLocaleChange(event: Event) {
 </script>
 
 <template>
-  <!-- En-tête permanent : visible depuis tous les onglets, pour qu'on sache
-       toujours sur quoi on agit. -->
+  <!-- Permanent header: visible from every tab, so you always know
+       what you are acting on. -->
   <header class="pivot-header">
     <div class="row">
       <strong style="flex: 1">{{ t('header.title') }}</strong>

@@ -57,7 +57,7 @@ public class PivotAiContextTests
     [Fact]
     public void Describe_TableauSansChamp_LeDitExplicitement()
     {
-        // Une section vide serait ambiguë pour le modèle : mieux vaut l'écrire.
+        // An empty section would be ambiguous for the model: better to spell it out.
         Assert.Contains("Aucun champ posé", PivotAiContext.Describe(Pivot()));
     }
 }

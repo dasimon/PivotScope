@@ -15,8 +15,8 @@ public class InvariantFormattingScopeTests
             using (InvariantFormattingScope.Enter())
             {
                 Assert.Equal("en-US", Thread.CurrentThread.CurrentCulture.Name);
-                // Le point de la discorde : en fr-FR, 1.5 se formate « 1,5 » et
-                // les API COM d'Excel refusent la chaîne.
+                // The bone of contention: in fr-FR, 1.5 formats as "1,5" and
+                // Excel's COM APIs reject the string.
                 Assert.Equal("1.5", 1.5d.ToString(Thread.CurrentThread.CurrentCulture));
             }
 

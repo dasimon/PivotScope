@@ -1,15 +1,15 @@
 namespace PivotScope.Core.Provenance;
 
-/// <summary>Un tuple MDX décomposé : la mesure d'un côté, les coordonnées de l'autre.</summary>
+/// <summary>A decomposed MDX tuple: the measure on one side, the coordinates on the other.</summary>
 public sealed record MdxTuple(string? Measure, IReadOnlyList<string> Coordinates);
 
 /// <summary>
-/// Lit la chaîne rendue par <c>PivotCell.MDX</c>, de la forme
+/// Reads the string returned by <c>PivotCell.MDX</c>, of the form
 /// <c>([Measures].[VL],[Devise].[Devise].&amp;[EUR])</c>.
 ///
-/// Le découpage se fait à profondeur zéro de crochets : un libellé de membre
-/// peut contenir une virgule (« [Actions, Europe] »), et découper naïvement sur
-/// « , » couperait la coordonnée en deux.
+/// Splitting happens at bracket depth zero: a member caption can contain a
+/// comma ("[Actions, Europe]"), and naively splitting on "," would cut the
+/// coordinate in two.
 /// </summary>
 public static class TupleParser
 {

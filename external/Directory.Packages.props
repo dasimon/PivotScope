@@ -1,8 +1,8 @@
 <Project>
 
-  <!-- Le sous-module CubeScope porte ses versions directement sur ses
-       PackageReference. La gestion centralisée de PivotScope lèverait NU1008
-       sur chacun d'eux : on la désactive pour tout ce qui est sous external/. -->
+  <!-- The CubeScope submodule puts its versions directly on its
+       PackageReference items. PivotScope's central management would raise NU1008
+       on each of them: disable it for everything under external/. -->
   <PropertyGroup>
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
   </PropertyGroup>

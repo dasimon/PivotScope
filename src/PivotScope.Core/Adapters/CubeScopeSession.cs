@@ -10,9 +10,9 @@ using PivotScope.Core.Abstractions;
 namespace PivotScope.Core.Adapters;
 
 /// <summary>
-/// Regroupe la session SSAS et les services CubeScope pour un couple
-/// serveur/catalogue donné, et les expose derrière les abstractions PivotScope.
-/// C'est le seul endroit du produit qui connaît CubeScope.Core.
+/// Groups the SSAS session and the CubeScope services for a given
+/// server/catalog pair, and exposes them behind the PivotScope abstractions.
+/// This is the only place in the product that knows about CubeScope.Core.
 /// </summary>
 public sealed class CubeScopeSession
     : ICubeMetadataReader, IMdxExecutor, ILevelMemberReader, IScriptReader, IDisposable
@@ -40,12 +40,12 @@ public sealed class CubeScopeSession
     public string? Catalog => _session.Catalog;
 
     /// <summary>
-    /// Ouvre une session sur le couple serveur/catalogue lu dans la connexion du
-    /// classeur. Sécurité intégrée Windows : aucun credential n'est manipulé.
+    /// Opens a session on the server/catalog pair read from the workbook
+    /// connection. Windows integrated security: no credential is handled.
     /// </summary>
     /// <param name="statePath">
-    /// Base SQLite propre à PivotScope. On ne partage pas celle de CubeScope :
-    /// deux process écrivant la même base est un problème qu'on n'a pas besoin d'avoir.
+    /// SQLite database owned by PivotScope. CubeScope's is not shared: two
+    /// processes writing the same database is a problem we have no need to have.
     /// </param>
     public static async Task<CubeScopeSession> ConnectAsync(
         string server, string catalog, string? statePath = null, CancellationToken ct = default)
@@ -82,14 +82,14 @@ public sealed class CubeScopeSession
         => _query.ExecuteAsync(mdx, ct);
 
     /// <summary>
-    /// Le MDX Script du cube, lu par AMO. Exige des droits de lecture des
-    /// métadonnées de définition ; l'appelant traite l'échec comme une note,
-    /// pas comme une panne.
+    /// The cube's MDX Script, read through AMO. Requires read access to the
+    /// definition metadata; the caller treats a failure as a note, not as an
+    /// outage.
     /// </summary>
     public Task<CubeScript> GetScriptAsync(string cube, CancellationToken ct = default)
         => _script.GetScriptAsync(cube, ct: ct);
 
-    /// <summary>L'IA est optionnelle : sans clé, l'interface se dégrade au lieu d'échouer.</summary>
+    /// <summary>AI is optional: without a key, the UI degrades instead of failing.</summary>
     public static bool IsAiConfigured => AiService.IsConfigured;
 
     public Task<string> RunAiAsync(
@@ -97,11 +97,11 @@ public sealed class CubeScopeSession
         => _ai.RunAsync(action, prompt, lang, ct);
 
     /// <summary>
-    /// Énumère les membres d'un niveau avec leur libellé et leur nom unique.
-    /// Passe par le CellSet plutôt que par QueryResult : ce dernier est aplati
-    /// pour une grille et perd les noms uniques, qui sont justement l'objet de
-    /// la requête. Résultat mis en cache par (cube, niveau) — un niveau ne
-    /// change pas en cours de session.
+    /// Enumerates the members of a level with their caption and unique name.
+    /// Goes through the CellSet rather than QueryResult: the latter is flattened
+    /// for a grid and loses the unique names, which are precisely what the
+    /// query is for. The result is cached per (cube, level) — a level does not
+    /// change during a session.
     /// </summary>
     public async Task<IReadOnlyList<LevelMember>> GetLevelMembersAsync(
         string cube, string levelUniqueName, int limit, CancellationToken ct = default)
@@ -116,7 +116,7 @@ public sealed class CubeScopeSession
             using var command = new AdomdCommand(mdx, conn);
             var cellSet = command.ExecuteCellSet();
 
-            // Piège connu : une requête à un seul axe n'a pas d'Axes[1].
+            // Known pitfall: a query with a single axis has no Axes[1].
             if (cellSet.Axes.Count < 2) return (IReadOnlyList<LevelMember>)[];
 
             var list = new List<LevelMember>(cellSet.Axes[1].Positions.Count);

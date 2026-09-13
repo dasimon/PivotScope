@@ -1,9 +1,9 @@
 /**
- * Client du pont vers l'add-in. Symétrique de BridgeRouter côté .NET :
- * on envoie {id, method, params}, on reçoit {id, ok, result | error}.
+ * Client for the bridge to the add-in. Mirror of BridgeRouter on the .NET side:
+ * we send {id, method, params}, we receive {id, ok, result | error}.
  *
- * Le routeur .NET répond TOUJOURS, y compris en erreur — c'est ce qui garantit
- * qu'aucune promesse ne reste pendante ici.
+ * The .NET router ALWAYS replies, including on error — that is what guarantees
+ * that no promise is left pending here.
  */
 
 type Pending = {
@@ -35,12 +35,12 @@ declare global {
 const pending = new Map<string, Pending>()
 let sequence = 0
 
-/** Notifications poussées par l'add-in, sans requête associée. */
+/** Notifications pushed by the add-in, with no associated request. */
 type BridgeEvent = { event: string; [key: string]: unknown }
 
 const listeners = new Map<string, Set<(payload: BridgeEvent) => void>>()
 
-/** S'abonne à un événement poussé. Rend la fonction de désabonnement. */
+/** Subscribes to a pushed event. Returns the unsubscribe function. */
 export function onEvent(
   name: string,
   handler: (payload: BridgeEvent) => void,
@@ -61,10 +61,10 @@ webview?.addEventListener('message', event => {
     return
   }
 
-  // Une notification poussée n'a pas d'identifiant : elle porte « event ».
+  // A pushed notification has no id: it carries "event".
   if ('event' in message && typeof message.event === 'string') {
     for (const handler of listeners.get(message.event) ?? []) {
-      try { handler(message as BridgeEvent) } catch { /* un abonné ne bloque pas les autres */ }
+      try { handler(message as BridgeEvent) } catch { /* one subscriber does not block the others */ }
     }
     return
   }
@@ -78,7 +78,7 @@ webview?.addEventListener('message', event => {
   else entry.reject(new Error(response.error ?? 'Erreur inconnue.'))
 })
 
-/** Indique si la page tourne bien dans le volet (et non dans un navigateur nu). */
+/** Tells whether the page is really running in the task pane (and not in a bare browser). */
 export const isHosted = webview !== undefined
 
 export function call<T>(method: string, params?: unknown): Promise<T> {

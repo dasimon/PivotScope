@@ -5,12 +5,12 @@ using PivotScope.Core.Abstractions;
 namespace PivotScope.Core.Provenance;
 
 /// <summary>
-/// Répond à « d'où vient ce chiffre ? ».
+/// Answers "where does this number come from?".
 ///
-/// Part du tuple rendu par Excel, retrouve la mesure dans le MDX Script du cube
-/// et remonte ses dépendances. Ne lève jamais : une information manquante
-/// devient une <see cref="CellProvenance.Note"/>, parce qu'afficher le tuple
-/// seul vaut mieux que n'afficher rien.
+/// Starts from the tuple returned by Excel, finds the measure in the cube's MDX
+/// Script and walks up its dependencies. Never throws: missing information
+/// becomes a <see cref="CellProvenance.Note"/>, because showing the tuple
+/// alone is better than showing nothing.
 /// </summary>
 public sealed class ProvenanceService(IScriptReader scripts, ICubeMetadataReader metadata)
 {
@@ -54,7 +54,7 @@ public sealed class ProvenanceService(IScriptReader scripts, ICubeMetadataReader
         }
         catch
         {
-            // Le graphe est un confort : son échec ne doit pas priver de l'expression.
+            // The graph is a convenience: its failure must not cost us the expression.
         }
 
         return new CellProvenance(
@@ -63,9 +63,9 @@ public sealed class ProvenanceService(IScriptReader scripts, ICubeMetadataReader
     }
 
     /// <summary>
-    /// Retrouve la commande du script. Selon les cubes, une mesure calculée peut
-    /// être nommée avec ou sans le préfixe <c>[Measures].</c> : on compare les
-    /// deux formes plutôt que de parier sur l'une.
+    /// Finds the script command. Depending on the cube, a calculated measure can
+    /// be named with or without the <c>[Measures].</c> prefix: both forms are
+    /// compared rather than betting on one.
     /// </summary>
     private static ScriptCommand? FindCommand(CubeScript script, string measure)
     {

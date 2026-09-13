@@ -13,9 +13,9 @@
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.1" />
   </ItemGroup>
-  <ItemGroup Label="Transitives épinglées">
-    <!-- ADOMD tire Microsoft.Identity.Client en 4.56.0, qui porte NU1901/NU1902.
-         Même pin que CubeScope. À resynchroniser à chaque montée d'ADOMD. -->
+  <ItemGroup Label="Pinned transitives">
+    <!-- ADOMD pulls in Microsoft.Identity.Client 4.56.0, which carries NU1901/NU1902.
+         Same pin as CubeScope. Resynchronize on every ADOMD upgrade. -->
     <PackageVersion Include="Microsoft.Identity.Client" Version="4.86.1" />
   </ItemGroup>
 </Project>

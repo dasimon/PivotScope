@@ -32,7 +32,7 @@ public class CalculationValidatorTests
     [InlineData("Marge]")]
     public void Validate_RefuseLesCrochetsDansLeNom(string name)
     {
-        // Un crochet casserait le nom unique MDX qu'on construit autour.
+        // A bracket would break the MDX unique name built around it.
         Assert.NotEmpty(CalculationValidator.Validate(Measure(name)));
     }
 
@@ -53,7 +53,7 @@ public class CalculationValidatorTests
     [Fact]
     public void Validate_RefuseUnFormatSurAutreChoseQuUnMembre()
     {
-        // Documenté : NumberFormat n'est valide que pour les membres calculés.
+        // Documented: NumberFormat is only valid for calculated members.
         var measure = new CalculationDefinition(
             "Marge", "1", CalculationKind.Measure, NumberFormat: "#,##0.00");
 
@@ -65,7 +65,7 @@ public class CalculationValidatorTests
     [Fact]
     public void Validate_RefuseUnDossierSurAutreChoseQuUneMesure()
     {
-        // Documenté : DisplayFolder n'est valide que pour les mesures calculées.
+        // Documented: DisplayFolder is only valid for calculated measures.
         var member = new CalculationDefinition(
             "Zone euro", "1", CalculationKind.Member,
             DisplayFolder: "Devises", ParentHierarchy: "[Devise].[Devise]");

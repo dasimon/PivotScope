@@ -8,7 +8,7 @@ public class MemberResolverTests
 {
     private const string Level = "[Devise].[Devise].[Devise]";
 
-    /// <summary>Exécuteur MDX bouchonné : c'est ce que la frontière IMdxExecutor achète.</summary>
+    /// <summary>Stubbed MDX executor: this is what the IMdxExecutor boundary buys.</summary>
     private sealed class FakeExecutor : IMdxExecutor
     {
         public List<string> Queries { get; } = [];
@@ -22,7 +22,7 @@ public class MemberResolverTests
         }
     }
 
-    /// <summary>Énumérateur de niveau bouchonné, avec compteur d'appels.</summary>
+    /// <summary>Stubbed level enumerator, with a call counter.</summary>
     private sealed class FakeLevelMembers(params (string Caption, string Unique)[] members)
         : ILevelMemberReader
     {
@@ -37,7 +37,7 @@ public class MemberResolverTests
         }
     }
 
-    /// <summary>Une ligne de résultat : une colonne __capN par clé sondée.</summary>
+    /// <summary>A result row: one __capN column per probed key.</summary>
     private static QueryResult Captions(params string?[] captions)
     {
         var columns = captions
@@ -60,7 +60,7 @@ public class MemberResolverTests
 
         Assert.Single(exec.Queries);
         Assert.Contains("StrToMember", exec.Queries[0]);
-        // Jamais de DMV : MDSCHEMA_MEMBERS ne supporte pas IN et scanne la dimension.
+        // Never a DMV: MDSCHEMA_MEMBERS does not support IN and scans the dimension.
         Assert.DoesNotContain("MDSCHEMA_MEMBERS", exec.Queries[0]);
         Assert.Equal(
             [$"{Level}.&[EUR]", $"{Level}.&[USD]"],
@@ -71,7 +71,7 @@ public class MemberResolverTests
     [Fact]
     public async Task ResolveAsync_RapporteLesClesNonResolues_SansEchouer()
     {
-        // Une caption nulle signale un membre inexistant.
+        // A null caption signals a nonexistent member.
         var exec = new FakeExecutor { Responder = (_, _) => Captions("Euro", null) };
         var resolver = new MemberResolver(exec);
 
@@ -94,7 +94,7 @@ public class MemberResolverTests
 
         var result = await resolver.ResolveAsync("Ventes", Level, ["EUR", "USD"]);
 
-        // 1 requête groupée en échec, puis 1 requête par clé.
+        // 1 failed grouped query, then 1 query per key.
         Assert.Equal(3, exec.Queries.Count);
         Assert.Equal(2, result.UniqueNames.Count);
         Assert.Empty(result.Unresolved);
@@ -170,16 +170,16 @@ public class MemberResolverTests
 
         var result = await resolver.ResolveAsync("C", Level, keys);
 
-        // 250 clés > taille de lot : plusieurs requêtes, aucune clé perdue.
+        // 250 keys > batch size: several queries, no key lost.
         Assert.True(exec.Queries.Count > 1);
         Assert.Equal(250, result.UniqueNames.Count);
         Assert.Empty(result.Unresolved);
     }
 
-    // --- Repli par libellé -------------------------------------------------
-    // Cas réel qui a motivé la fonction : sur le cube Ventes, coller
-    // « Aurore » échoue par clé (la clé est « PRD014 ») alors que c'est le
-    // libellé qu'a l'utilisateur sous les yeux.
+    // --- Fallback by caption -----------------------------------------------
+    // Real case that motivated the feature: on the Ventes cube, pasting
+    // "Aurore" fails by key (the key is "PRD014") even though it is the
+    // caption the user has in front of them.
 
     [Fact]
     public async Task ResolveAsync_ReplieSurLeLibelle_QuandLaCleNExistePas()
@@ -205,7 +205,7 @@ public class MemberResolverTests
         var result = await resolver.ResolveAsync("Ventes", Level, ["EUR"]);
 
         Assert.Equal([$"{Level}.&[EUR]"], result.UniqueNames);
-        // Tout est résolu par clé : le niveau n'est jamais énuméré.
+        // Everything is resolved by key: the level is never enumerated.
         Assert.Equal(0, level.Calls);
     }
 
@@ -249,7 +249,7 @@ public class MemberResolverTests
 
         var result = await resolver.ResolveAsync("Ventes", Level, ["Aurore"]);
 
-        // Deux membres portent ce libellé : choisir serait un filtre faux.
+        // Two members share this caption: picking one would be a wrong filter.
         Assert.Empty(result.UniqueNames);
         Assert.Empty(result.Unresolved);
         Assert.Equal(["Aurore"], result.Ambiguous);

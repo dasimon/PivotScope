@@ -127,9 +127,9 @@ function load(stored: StoredCalculation) {
         <p class="muted">{{ t('calc.numberFormatHint') }}</p>
       </template>
 
-      <!-- Surtout pas de <label> autour de l'éditeur : un label intercepte les
-           clics et redirige le focus vers son premier contrôle, ce qui empêche
-           Monaco de le prendre. Constaté en recette. -->
+      <!-- Above all, no <label> around the editor: a label intercepts
+           clicks and redirects focus to its first control, which prevents
+           Monaco from taking it. Observed during acceptance testing. -->
       <div class="field">
         <span class="field-label">{{ t('calc.expression') }}</span>
         <MdxEditor v-model="draft.expression" height="180px" @run="apply" />

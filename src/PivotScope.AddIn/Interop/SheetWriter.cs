@@ -4,13 +4,13 @@ using Xl = Microsoft.Office.Interop.Excel;
 namespace PivotScope.AddIn.Interop;
 
 /// <summary>
-/// Écrit un tableau rectangulaire dans la feuille.
+/// Writes a rectangular array to the sheet.
 ///
-/// Une seule affectation à Range.Value2 : écrire cellule par cellule à travers
-/// COM est des ordres de grandeur plus lent, et c'est le genre de détail qui
-/// décide si l'outil est utilisable sur un vrai résultat.
+/// A single assignment to Range.Value2: writing cell by cell through
+/// COM is orders of magnitude slower, and that is the kind of detail that
+/// decides whether the tool is usable on a real result.
 ///
-/// À appeler exclusivement via <see cref="ExcelThread"/>.
+/// Call exclusively through <see cref="ExcelThread"/>.
 /// </summary>
 public static class SheetWriter
 {
@@ -36,7 +36,7 @@ public static class SheetWriter
             anchor = app.ActiveCell
                 ?? throw new InvalidOperationException("Aucune cellule active.");
 
-            // Écraser un TCD par une plage brute le corromprait.
+            // Overwriting a PivotTable with a raw range would corrupt it.
             try
             {
                 if (anchor.PivotTable is not null)
@@ -45,7 +45,7 @@ public static class SheetWriter
                         "Choisissez une autre cellule ou cochez « nouvelle feuille ».");
             }
             catch (InvalidOperationException) { throw; }
-            catch { /* hors TCD : c'est le cas nominal, COM lève */ }
+            catch { /* outside a PivotTable: the nominal case, COM throws */ }
         }
 
         var target = anchor.Resize[rows, columns];

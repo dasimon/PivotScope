@@ -1,8 +1,8 @@
 import type fr from './fr'
 
-// Typé `typeof fr` : oublier une clé devient une erreur de compilation. C'est
-// tout l'intérêt — un catalogue incomplet ne se voit sinon qu'en production,
-// sur le seul écran que personne n'ouvre.
+// Typed `typeof fr`: forgetting a key becomes a compile error. That is
+// the whole point — otherwise an incomplete catalog only shows up in production,
+// on the one screen nobody opens.
 const en: typeof fr = {
   app: {
     notHosted: "This page must be opened from Excel's PivotScope pane.",

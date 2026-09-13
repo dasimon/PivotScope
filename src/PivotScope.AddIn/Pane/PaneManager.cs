@@ -4,9 +4,9 @@ using PivotScope.AddIn.Diagnostics;
 namespace PivotScope.AddIn.Pane;
 
 /// <summary>
-/// Crée le volet Office à la demande, une seule fois par session Excel.
-/// Repli documenté si le CustomTaskPane s'avère inutilisable (focus clavier) :
-/// remplacer la création par une Form non-modale hébergeant le même PaneControl.
+/// Creates the Office task pane on demand, only once per Excel session.
+/// Documented fallback if the CustomTaskPane turns out to be unusable (keyboard focus):
+/// replace the creation with a modeless Form hosting the same PaneControl.
 /// </summary>
 internal static class PaneManager
 {
@@ -29,13 +29,13 @@ internal static class PaneManager
         }
 
         _pane.Visible = true;
-        _ = _bridge; // conservé vivant tant que le volet existe
+        _ = _bridge; // kept alive as long as the pane exists
     }
 
     /// <summary>
-    /// Ouvre le volet sur un onglet donné. Le message part après un court délai
-    /// si la SPA n'est pas encore prête : elle rejoue le dernier onglet demandé
-    /// à son initialisation.
+    /// Opens the task pane on a given tab. The message goes out after a short delay
+    /// if the SPA is not ready yet: it replays the last requested tab
+    /// when it initializes.
     /// </summary>
     internal static void ShowOn(string tab)
     {

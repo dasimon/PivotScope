@@ -5,14 +5,14 @@ using Xl = Microsoft.Office.Interop.Excel;
 namespace PivotScope.AddIn.Interop;
 
 /// <summary>
-/// Lit le tuple MDX complet de la cellule active — filtres de rapport inclus.
+/// Reads the full MDX tuple of the active cell — report filters included.
 ///
-/// Deux limites documentées par Microsoft, à traduire en messages utilisables
-/// plutôt qu'en exceptions COM : <c>PivotCell.MDX</c> lève hors de la zone de
-/// valeurs, et lève aussi quand un filtre de rapport a plusieurs éléments
-/// sélectionnés.
+/// Two limits documented by Microsoft, to be turned into usable messages
+/// rather than COM exceptions: <c>PivotCell.MDX</c> throws outside the values
+/// area, and also throws when a report filter has several items
+/// selected.
 ///
-/// À appeler exclusivement via <see cref="ExcelThread"/>.
+/// Call exclusively through <see cref="ExcelThread"/>.
 /// </summary>
 public static class PivotCellReader
 {
@@ -42,8 +42,8 @@ public static class PivotCellReader
         try
         {
             var tuple = pivotCell.MDX;
-            // Le format exact rendu par Excel n'est pas documenté : on le trace
-            // au premier usage plutôt que de conclure sur une supposition.
+            // The exact format returned by Excel is not documented: log it
+            // on first use rather than conclude on an assumption.
             FileLog.Write($"PivotCell.MDX = {tuple}");
             return tuple;
         }

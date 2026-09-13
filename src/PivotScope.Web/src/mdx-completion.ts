@@ -1,11 +1,11 @@
-// Autocomplétion MDX, sensible au contexte de frappe :
-//   « [Measures].            » → mesures seules
-//   « [Dim].[Hier].          » → membres de la hiérarchie (chargés en lazy)
-//   « [Dim].                 » → hiérarchies de cette dimension
-//   ailleurs                  → mots-clés, fonctions, dimensions et mesures
+// MDX autocompletion, aware of the typing context:
+//   "[Measures].            " → measures only
+//   "[Dim].[Hier].          " → members of the hierarchy (loaded lazily)
+//   "[Dim].                 " → hierarchies of that dimension
+//   elsewhere                 → keywords, functions, dimensions and measures
 //
-// Version courte de celle de CubeScope : branchée sur le pont postMessage,
-// sans store global ni API HTTP.
+// Short version of CubeScope's: wired to the postMessage bridge,
+// with no global store and no HTTP API.
 import { monaco } from './monaco-mdx'
 import { mdxFunctions } from './mdxFunctions'
 import { call } from './bridge'
@@ -23,7 +23,7 @@ let meta: CubeMeta | null = null
 const memberCache = new Map<string, MemberMeta[]>()
 let disposable: monaco.IDisposable | null = null
 
-/** La complétion suit le cube du TCD actif. */
+/** Completion follows the cube of the active PivotTable. */
 export function setCubeMeta(next: CubeMeta | null): void {
   meta = next
   memberCache.clear()
@@ -37,15 +37,15 @@ async function membersOf(hierarchy: string): Promise<MemberMeta[]> {
     memberCache.set(hierarchy, fetched)
     return fetched
   } catch {
-    // Une complétion qui échoue ne doit jamais interrompre la frappe.
+    // A failing completion must never interrupt typing.
     return []
   }
 }
 
 /**
- * Ce que l'utilisateur est en train de taper depuis le dernier séparateur.
- * Sert à calculer la plage à remplacer : sans ça, insérer après « [Measures]. »
- * dupliquerait le préfixe déjà saisi.
+ * What the user is typing since the last separator.
+ * Used to compute the range to replace: without it, inserting after "[Measures]."
+ * would duplicate the prefix already typed.
  */
 function typedFragment(before: string): string {
   return /[^\s(){},.]*$/.exec(before)?.[0] ?? ''
@@ -87,9 +87,9 @@ export function registerMdxCompletion(): void {
 
       const fragment = typedFragment(before)
 
-      // Monaco auto-ferme les crochets : taper « [ » écrit « [] » et laisse le
-      // curseur au milieu. Si notre insertion apporte déjà son « ] », il faut
-      // que la plage remplacée avale celui qui traîne, sinon on obtient « ]] ».
+      // Monaco auto-closes brackets: typing "[" writes "[]" and leaves the
+      // cursor in between. If our insertion already brings its own "]", the
+      // replaced range must swallow the dangling one, otherwise we get "]]".
       const after = model.getLineContent(position.lineNumber).slice(position.column - 1)
       const danglingClose = after.startsWith(']') ? 1 : 0
 
@@ -104,14 +104,14 @@ export function registerMdxCompletion(): void {
       const K = monaco.languages.CompletionItemKind
       const context = before.slice(0, before.length - fragment.length)
 
-      // 1. « [Measures]. » → les mesures, et rien d'autre.
+      // 1. "[Measures]." → the measures, and nothing else.
       if (/\[Measures\]\.$/i.test(context)) {
         const suggestions: monaco.languages.CompletionItem[] = []
         for (const folder of meta?.measureFolders ?? [])
           for (const measure of folder.measures)
             suggestions.push(item(
               measure.name,
-              // Le préfixe [Measures]. est déjà tapé : n'insérer que le nom.
+              // The [Measures]. prefix is already typed: insert only the name.
               measure.uniqueName.startsWith(MEASURES_PREFIX + '.')
                 ? measure.uniqueName.slice(MEASURES_PREFIX.length + 1)
                 : `[${measure.name}]`,
@@ -119,7 +119,7 @@ export function registerMdxCompletion(): void {
         return { suggestions }
       }
 
-      // 2. « [Dim].[Hier]. » → membres de la hiérarchie.
+      // 2. "[Dim].[Hier]." → members of the hierarchy.
       const afterHierarchy = /(\[[^\]]+\]\.\[[^\]]+\])\.$/.exec(context)
       if (afterHierarchy) {
         const hierarchy = afterHierarchy[1]
@@ -134,7 +134,7 @@ export function registerMdxCompletion(): void {
         }
       }
 
-      // 3. « [Dim]. » → hiérarchies de cette dimension.
+      // 3. "[Dim]." → hierarchies of that dimension.
       const afterDimension = /(\[[^\]]+\])\.$/.exec(context)
       if (afterDimension) {
         const dimensionName = afterDimension[1].slice(1, -1)
@@ -148,7 +148,7 @@ export function registerMdxCompletion(): void {
         }
       }
 
-      // 4. Contexte libre : on trie pour que le métier passe avant la syntaxe.
+      // 4. Free context: sort so that business objects come before syntax.
       const suggestions: monaco.languages.CompletionItem[] = []
 
       for (const folder of meta?.measureFolders ?? [])

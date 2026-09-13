@@ -6,24 +6,24 @@ using Xl = Microsoft.Office.Interop.Excel;
 
 namespace PivotScope.AddIn.Interop;
 
-/// <summary>Un calcul déjà présent sur le TCD.</summary>
+/// <summary>A calculation already present on the PivotTable.</summary>
 public sealed record ExistingCalculation(
     string Name, string Formula, string Kind, bool IsValid, string? DisplayFolder);
 
 /// <summary>
-/// Crée, liste et supprime les calculs d'un TCD OLAP.
+/// Creates, lists and deletes the calculations of an OLAP PivotTable.
 ///
-/// Points documentés qu'il faut respecter, sous peine d'erreurs opaques ou de
-/// réglages silencieusement ignorés :
-/// — depuis Excel 2013, mesures et membres passent par AddCalculatedMember ;
-///   seuls les ENSEMBLES nommés utilisent encore Add, suivi de CubeFields.AddSet ;
-/// — DisplayFolder n'est valide que pour une mesure, NumberFormat que pour un
-///   membre (validé en amont par CalculationValidator) ;
-/// — IsValid renvoie True quand le TCD n'est pas connecté : il faut appeler
-///   PivotCache.MakeConnection() avant de s'y fier, sinon on déclare valide un
-///   calcul cassé.
+/// Documented points that must be respected, or you get opaque errors or
+/// settings silently ignored:
+/// — since Excel 2013, measures and members go through AddCalculatedMember;
+///   only named SETS still use Add, followed by CubeFields.AddSet;
+/// — DisplayFolder is only valid for a measure, NumberFormat only for a
+///   member (validated upstream by CalculationValidator);
+/// — IsValid returns True when the PivotTable is not connected: you must call
+///   PivotCache.MakeConnection() before relying on it, otherwise a broken
+///   calculation is reported as valid.
 ///
-/// À appeler exclusivement via <see cref="ExcelThread"/>.
+/// Call exclusively through <see cref="ExcelThread"/>.
 /// </summary>
 public static class CalculationApplier
 {
@@ -31,7 +31,7 @@ public static class CalculationApplier
     {
         var app = (Xl.Application)ExcelDnaUtil.Application;
         Xl.PivotTable? pivot = null;
-        try { pivot = app.ActiveCell?.PivotTable; } catch { /* hors TCD */ }
+        try { pivot = app.ActiveCell?.PivotTable; } catch { /* outside a PivotTable */ }
 
         var found = pivot ?? throw new InvalidOperationException(
             "Placez le curseur dans un tableau croisé dynamique.");
@@ -52,7 +52,7 @@ public static class CalculationApplier
         foreach (Xl.CalculatedMember member in pivot.CalculatedMembers)
         {
             string? folder = null;
-            try { folder = member.DisplayFolder; } catch { /* pas une mesure */ }
+            try { folder = member.DisplayFolder; } catch { /* not a measure */ }
 
             bool valid;
             try { valid = member.IsValid; } catch { valid = false; }
@@ -79,8 +79,8 @@ public static class CalculationApplier
 
         var uniqueName = CalculationValidator.QualifiedName(definition);
 
-        // Remplacer plutôt que d'échouer sur un doublon : c'est le geste attendu
-        // quand on met au point une expression.
+        // Replace rather than fail on a duplicate: that is the expected action
+        // while fine-tuning an expression.
         DeleteIfExists(pivot, uniqueName);
 
         Xl.CalculatedMember created;
@@ -89,7 +89,7 @@ public static class CalculationApplier
             created = pivot.CalculatedMembers.Add(
                 uniqueName, definition.Expression, definition.SolveOrder,
                 Xl.XlCalculatedMemberType.xlCalculatedSet);
-            // Documenté : un ensemble n'apparaît qu'après AddSet.
+            // Documented: a set only appears after AddSet.
             pivot.CubeFields.AddSet(uniqueName, definition.Name.Trim());
         }
         else
@@ -129,8 +129,8 @@ public static class CalculationApplier
     }
 
     /// <summary>
-    /// IsValid ment sur un TCD déconnecté (documenté) : il renvoie True. On se
-    /// connecte donc avant toute vérification.
+    /// IsValid lies on a disconnected PivotTable (documented): it returns True. So
+    /// we connect before any check.
     /// </summary>
     private static void EnsureConnected(Xl.PivotTable pivot)
     {
@@ -158,19 +158,19 @@ public static class CalculationApplier
     }
 
     /// <summary>
-    /// Pose la mesure calculée dans la zone de valeurs. AddDataField attend un
-    /// CUBE FIELD, pas le membre ; GetMeasure ne convient pas ici (il ne sert
-    /// qu'aux mesures implicites d'une hiérarchie d'attribut, et seulement pour
+    /// Places the calculated measure in the values area. AddDataField expects a
+    /// CUBE FIELD, not the member; GetMeasure does not fit here (it only serves
+    /// implicit measures of an attribute hierarchy, and only for
     /// Count/Sum/Average/Max/Min).
     /// </summary>
     private static void ShowMeasure(Xl.PivotTable pivot, string uniqueName, string caption)
     {
         if (TryAddDataField(pivot, uniqueName, caption)) return;
 
-        // Excel ne matérialise le CubeField d'une mesure de session qu'après un
-        // rafraîchissement : la collection CubeFields reflète le dernier état
-        // rapatrié du serveur. C'est pour cette raison que l'add-in d'origine
-        // proposait un « Refresh data by default ».
+        // Excel only materializes the CubeField of a session measure after a
+        // refresh: the CubeFields collection reflects the last state fetched
+        // from the server. That is why the original add-in offered a
+        // "Refresh data by default".
         try
         {
             var cache = pivot.PivotCache();
@@ -190,9 +190,9 @@ public static class CalculationApplier
 
         if (TryAddDataField(pivot, uniqueName, caption)) return;
 
-        // Le calcul existe mais son cube field est introuvable : plutôt que
-        // d'échouer en aveugle, on journalise l'inventaire réel. Ce réflexe a
-        // déjà résolu deux bugs d'interop en phase 1.
+        // The calculation exists but its cube field cannot be found: rather than
+        // fail blindly, log the actual inventory. This reflex has
+        // already solved two interop bugs in phase 1.
         var inventory = new StringBuilder();
         foreach (Xl.CubeField cf in pivot.CubeFields)
             inventory.Append($"\n  {cf.Name} | type={cf.CubeFieldType} | sub={cf.CubeFieldSubType}");

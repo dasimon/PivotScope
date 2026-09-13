@@ -5,9 +5,9 @@ using Xl = Microsoft.Office.Interop.Excel;
 namespace PivotScope.AddIn.Interop;
 
 /// <summary>
-/// Lit le TCD sous le curseur. Ne lève jamais : tout échec devient un
-/// PivotContext dégradé porteur d'un diagnostic affichable dans le volet.
-/// À appeler exclusivement via <see cref="ExcelThread"/>.
+/// Reads the PivotTable under the cursor. Never throws: any failure becomes a
+/// degraded PivotContext carrying a diagnostic that can be shown in the task pane.
+/// Call exclusively through <see cref="ExcelThread"/>.
 /// </summary>
 public static class PivotTableInspector
 {
@@ -17,7 +17,7 @@ public static class PivotTableInspector
 
         Xl.PivotTable? pivot = null;
         try { pivot = app.ActiveCell?.PivotTable; }
-        catch { /* le curseur n'est pas dans un TCD : COM lève, c'est normal */ }
+        catch { /* the cursor is not in a PivotTable: COM throws, that is expected */ }
 
         if (pivot is null)
             return PivotContext.None("Placez le curseur dans un tableau croisé dynamique.");
@@ -31,9 +31,9 @@ public static class PivotTableInspector
                 "Ce tableau croisé dynamique n'est pas connecté à un cube OLAP. " +
                 "PivotScope ne prend en charge que SSAS Multidimensional.");
 
-        // Documenté : PivotTable.MDX lève s'il n'y a aucun élément de données.
+        // Documented: PivotTable.MDX throws if there is no data item.
         string? mdx = null;
-        try { mdx = pivot.MDX; } catch { /* TCD vide */ }
+        try { mdx = pivot.MDX; } catch { /* empty PivotTable */ }
 
         var (server, catalog) = ConnectionParts(cache);
         var cube = CubeName(cache);
@@ -61,13 +61,13 @@ public static class PivotTableInspector
                 fields.Add(new PivotFieldInfo(cf.Caption, cf.Name, area));
             }
         }
-        catch { /* liste partielle plutôt que rien */ }
+        catch { /* a partial list rather than nothing */ }
         return fields;
     }
 
     /// <summary>
-    /// Pour une connexion xlCmdCube, CommandText porte le nom du cube. Vide sur
-    /// une connexion d'un autre type : la SPA proposera alors un sélecteur.
+    /// For an xlCmdCube connection, CommandText holds the cube name. Empty on
+    /// a connection of another type: the SPA will then offer a picker.
     /// </summary>
     private static string? CubeName(Xl.PivotCache cache)
     {
@@ -81,12 +81,12 @@ public static class PivotTableInspector
         catch { return null; }
     }
 
-    /// <summary>Extrait Data Source et Initial Catalog de la chaîne OLE DB du classeur.</summary>
+    /// <summary>Extracts Data Source and Initial Catalog from the workbook's OLE DB string.</summary>
     private static (string? Server, string? Catalog) ConnectionParts(Xl.PivotCache cache)
     {
         string? connectionString = null;
         try { connectionString = cache.WorkbookConnection?.OLEDBConnection?.Connection as string; }
-        catch { /* connexion indisponible */ }
+        catch { /* connection unavailable */ }
 
         if (string.IsNullOrWhiteSpace(connectionString)) return (null, null);
 

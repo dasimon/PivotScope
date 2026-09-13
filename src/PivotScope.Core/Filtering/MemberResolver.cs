@@ -4,8 +4,8 @@ using PivotScope.Core.Abstractions;
 namespace PivotScope.Core.Filtering;
 
 /// <summary>
-/// Ce qui a été résolu, ce qui ne l'a pas été, et ce qui l'était trop.
-/// Les trois comptent : une clé silencieusement ignorée est un filtre faux.
+/// What was resolved, what was not, and what matched too much.
+/// All three matter: a silently ignored key is a wrong filter.
 /// </summary>
 public sealed record MemberResolution(
     IReadOnlyList<string> UniqueNames,
@@ -13,38 +13,38 @@ public sealed record MemberResolution(
     IReadOnlyList<string> Ambiguous);
 
 /// <summary>
-/// Traduit une liste de valeurs collées par l'utilisateur en noms uniques de
-/// membres MDX. Trois formes acceptées, essayées dans cet ordre :
+/// Translates a list of values pasted by the user into MDX member unique
+/// names. Three forms are accepted, tried in this order:
 ///
-/// 1. un nom unique complet (« [Dim].[Hier].[Niveau].&amp;[X] ») — repris tel quel ;
-/// 2. une CLÉ de membre — adressée par « niveau.&amp;[valeur] », direct et sans scan ;
-/// 3. un LIBELLÉ — résolu en énumérant les membres du niveau.
+/// 1. a full unique name ("[Dim].[Hier].[Level].&amp;[X]") — taken as is;
+/// 2. a member KEY — addressed as "level.&amp;[value]", direct and without a scan;
+/// 3. a CAPTION — resolved by enumerating the members of the level.
 ///
-/// L'étape 3 existe parce que personne n'a les clés techniques sous la main :
-/// sur un cube réel, l'utilisateur colle « Aurore » alors que la clé est
-/// « PRD014 ». Mesuré : 3 157 membres d'un niveau en 79 ms, et l'énumération
-/// n'a lieu que s'il reste des valeurs non résolues.
+/// Step 3 exists because nobody has the technical keys at hand: on a real
+/// cube, the user pastes "Aurore" while the key is "PRD014". Measured: 3,157
+/// members of a level in 79 ms, and the enumeration only happens if some
+/// values are still unresolved.
 ///
-/// Piège hérité de CubeScope : ne JAMAIS passer par $SYSTEM.MDSCHEMA_MEMBERS,
-/// qui ne supporte pas IN et parcourt la dimension entière. Tout passe par MDX.
+/// Pitfall inherited from CubeScope: NEVER go through $SYSTEM.MDSCHEMA_MEMBERS,
+/// which does not support IN and walks the entire dimension. Everything goes through MDX.
 /// </summary>
 public sealed class MemberResolver(IMdxExecutor executor, ILevelMemberReader? levelMembers = null)
 {
     /// <summary>
-    /// Au-delà, la requête de sondage devient longue et une seule clé morte
-    /// coûte cher au repli. Valeur empirique, pas une contrainte du serveur.
+    /// Beyond this, the probe query gets long and a single dead key makes the
+    /// fallback expensive. Empirical value, not a server constraint.
     /// </summary>
     private const int BatchSize = 100;
 
     /// <summary>
-    /// Plafond de l'énumération d'un niveau. À 79 ms pour 3 157 membres, 50 000
-    /// reste sous la seconde ; au-delà, mieux vaut coller des clés.
+    /// Cap on the enumeration of a level. At 79 ms for 3,157 members, 50,000
+    /// stays under a second; beyond that, pasting keys is the better option.
     /// </summary>
     private const int LevelMemberLimit = 50_000;
 
     private static readonly char[] Separators = ['\r', '\n', '\t', ';', ','];
 
-    /// <summary>Découpe un collage utilisateur en valeurs, quel qu'en soit le séparateur.</summary>
+    /// <summary>Splits a user paste into values, whatever the separator.</summary>
     public static IReadOnlyList<string> ParseKeys(string pasted) =>
         [.. pasted.Split(Separators, StringSplitOptions.RemoveEmptyEntries |
                                      StringSplitOptions.TrimEntries)];
@@ -52,7 +52,7 @@ public sealed class MemberResolver(IMdxExecutor executor, ILevelMemberReader? le
     public static string BuildUniqueName(string levelUniqueName, string key)
         => $"{levelUniqueName}.&[{key.Trim()}]";
 
-    /// <summary>Un nom unique MDX déjà écrit par l'utilisateur, à ne pas réencadrer.</summary>
+    /// <summary>An MDX unique name already written by the user, not to be wrapped again.</summary>
     private static bool LooksLikeUniqueName(string value)
         => value.StartsWith('[') && value.Contains("].[", StringComparison.Ordinal);
 
@@ -73,7 +73,7 @@ public sealed class MemberResolver(IMdxExecutor executor, ILevelMemberReader? le
         var resolved = new List<string>();
         var pending = new List<string>();
 
-        // Étape 1 — les noms uniques complets sont repris sans aller au serveur.
+        // Step 1 — full unique names are taken as is, without going to the server.
         var toProbe = new List<string>();
         foreach (var value in distinct)
         {
@@ -81,7 +81,7 @@ public sealed class MemberResolver(IMdxExecutor executor, ILevelMemberReader? le
             else toProbe.Add(value);
         }
 
-        // Étape 2 — tentative par clé, en lots.
+        // Step 2 — attempt by key, in batches.
         foreach (var batch in Chunk(toProbe, BatchSize))
         {
             try
@@ -97,8 +97,8 @@ public sealed class MemberResolver(IMdxExecutor executor, ILevelMemberReader? le
             }
             catch
             {
-                // Une référence invalide peut faire tomber le lot entier : on
-                // repasse valeur par valeur pour isoler les fautives.
+                // An invalid reference can bring down the whole batch: retry
+                // value by value to isolate the faulty ones.
                 await ProbeOneByOneAsync(cube, levelUniqueName, batch, resolved, pending, ct)
                     .ConfigureAwait(false);
             }
@@ -106,7 +106,7 @@ public sealed class MemberResolver(IMdxExecutor executor, ILevelMemberReader? le
 
         if (pending.Count == 0) return new MemberResolution(resolved, [], []);
 
-        // Étape 3 — repli par libellé, une seule énumération du niveau.
+        // Step 3 — fallback by caption, a single enumeration of the level.
         return await ResolveByCaptionAsync(cube, levelUniqueName, resolved, pending, ct)
             .ConfigureAwait(false);
     }
@@ -129,8 +129,8 @@ public sealed class MemberResolver(IMdxExecutor executor, ILevelMemberReader? le
         }
         catch
         {
-            // L'énumération n'est qu'un confort : son échec ne doit pas effacer
-            // ce que l'étape par clé a déjà résolu.
+            // The enumeration is only a convenience: its failure must not erase
+            // what the key step has already resolved.
             return new MemberResolution(resolved, pending, []);
         }
 
@@ -181,9 +181,9 @@ public sealed class MemberResolver(IMdxExecutor executor, ILevelMemberReader? le
     }
 
     /// <summary>
-    /// Une requête, un membre calculé par valeur. La caption revient non nulle
-    /// si et seulement si le membre existe — constaté sur un cube réel :
-    /// StrToMember sur un membre inexistant ne lève pas, il renvoie null.
+    /// One query, one calculated member per value. The caption comes back
+    /// non-null if and only if the member exists — observed on a real cube:
+    /// StrToMember on a nonexistent member does not throw, it returns null.
     /// </summary>
     private async Task<IReadOnlyList<string?>> ProbeAsync(
         string cube, string levelUniqueName, IReadOnlyList<string> keys, CancellationToken ct)
@@ -203,8 +203,8 @@ public sealed class MemberResolver(IMdxExecutor executor, ILevelMemberReader? le
         var result = await executor.ExecuteAsync(mdx.ToString(), ct).ConfigureAwait(false);
         if (result.Rows.Count == 0) return [];
 
-        // On lit par position de colonne, pas par nom : le mapping du CellSet
-        // décide du libellé de colonne, l'ordre des mesures est ce qui fait foi.
+        // Read by column position, not by name: the CellSet mapping decides
+        // the column label, the order of the measures is what counts.
         var row = result.Rows[0];
         var values = new List<string?>(keys.Count);
         for (var i = 0; i < keys.Count && i < result.Columns.Count; i++)

@@ -1,11 +1,11 @@
 namespace PivotScope.Core.Calculations;
 
 /// <summary>
-/// Vérifie une définition de calcul avant de la présenter à Excel.
+/// Checks a calculation definition before handing it to Excel.
 ///
-/// Le but n'est pas de valider le MDX — seul le serveur en est juge — mais
-/// d'attraper ce qui produirait une erreur COM opaque ou, pire, un réglage
-/// silencieusement ignoré.
+/// The goal is not to validate the MDX — only the server can judge that — but
+/// to catch what would produce an opaque COM error or, worse, a setting that
+/// is silently ignored.
 /// </summary>
 public static class CalculationValidator
 {
@@ -26,8 +26,8 @@ public static class CalculationValidator
             string.IsNullOrWhiteSpace(definition.ParentHierarchy))
             messages.Add("Un membre calculé doit indiquer sa hiérarchie parente.");
 
-        // Les deux règles suivantes sont documentées par Microsoft. Sans elles,
-        // le réglage est accepté puis ignoré — le pire des comportements.
+        // The next two rules are documented by Microsoft. Without them, the
+        // setting is accepted and then ignored — the worst possible behaviour.
         if (definition.NumberFormat is { Length: > 0 } &&
             definition.Kind is not CalculationKind.Member)
             messages.Add("Le format de nombre n'est valide que pour un membre calculé.");
@@ -39,7 +39,7 @@ public static class CalculationValidator
         return messages;
     }
 
-    /// <summary>Nom unique MDX du calcul, tel qu'Excel devra le connaître.</summary>
+    /// <summary>MDX unique name of the calculation, as Excel will need to know it.</summary>
     public static string QualifiedName(CalculationDefinition definition)
     {
         var name = definition.Name.Trim();

@@ -3,13 +3,13 @@ import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
   plugins: [vue()],
-  // Chemins relatifs : la SPA est servie depuis une origine virtuelle
-  // (https://pivotscope.local/) alimentée par les ressources embarquées.
+  // Relative paths: the SPA is served from a virtual origin
+  // (https://pivotscope.local/) backed by the embedded resources.
   base: './',
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    // Un seul JS et un seul CSS : moins de ressources à embarquer et à servir.
+    // A single JS and a single CSS file: fewer resources to embed and serve.
     rollupOptions: {
       output: {
         entryFileNames: 'app.js',

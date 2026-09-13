@@ -6,13 +6,13 @@ using Xl = Microsoft.Office.Interop.Excel;
 namespace PivotScope.AddIn;
 
 /// <summary>
-/// Libellés du ruban et du menu contextuel.
+/// Labels of the ribbon and the context menu.
 ///
-/// Ils ne peuvent pas passer par vue-i18n : ils vivent dans Excel, hors du
-/// volet. Le ruban étant construit une seule fois au chargement, la langue est
-/// celle d'Excel — pas celle choisie plus tard dans le volet. C'est le
-/// compromis assumé : un ruban qui changerait de langue en cours de session
-/// demanderait de le reconstruire entièrement, pour une quinzaine de mots.
+/// They cannot go through vue-i18n: they live in Excel, outside the
+/// task pane. Since the ribbon is built only once at load time, the language is
+/// Excel's — not the one chosen later in the pane. That is the
+/// deliberate trade-off: a ribbon that switched language mid-session
+/// would have to be rebuilt entirely, for about fifteen words.
 /// </summary>
 internal static class RibbonText
 {
@@ -22,7 +22,7 @@ internal static class RibbonText
 
     internal static bool IsFrench => UseFrench.Value;
 
-    /// <summary>Choisit entre deux libellés selon la langue d'affichage d'Excel.</summary>
+    /// <summary>Picks between two labels based on Excel's display language.</summary>
     internal static string T(string french, string english) => IsFrench ? french : english;
 
     private static bool DetectFrench()
@@ -35,8 +35,8 @@ internal static class RibbonText
         }
         catch (Exception ex)
         {
-            // Langue indéterminable : on reste en français, la langue de
-            // l'auteur et de l'usage quotidien.
+            // Language cannot be determined: stay in French, the language of
+            // the author and of daily use.
             FileLog.Write("Langue d'Excel indéterminable, ruban en français.", ex);
             return true;
         }

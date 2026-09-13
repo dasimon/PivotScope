@@ -3,18 +3,18 @@ using CubeScope.Core.Models;
 namespace PivotScope.Core.Query;
 
 /// <summary>
-/// Met un résultat MDX à plat pour Excel.
+/// Flattens an MDX result for Excel.
 ///
-/// Un tableau rectangulaire écrit en une seule affectation à Range.Value2 vaut
-/// mille écritures cellule par cellule : sur un crossjoin large, c'est la
-/// différence entre instantané et interminable.
+/// A rectangular array written in a single assignment to Range.Value2 is worth
+/// a thousand cell-by-cell writes: on a wide crossjoin, it is the difference
+/// between instant and endless.
 /// </summary>
 public static class RangeProjection
 {
     /// <summary>
-    /// Projette le résultat en tableau <c>[ligne, colonne]</c> 0-based.
-    /// Les cellules nulles restent nulles : une cellule vide et un zéro ne sont
-    /// pas la même chose pour les formules en aval.
+    /// Projects the result into a 0-based <c>[row, column]</c> array.
+    /// Null cells stay null: an empty cell and a zero are not the same thing
+    /// for downstream formulas.
     /// </summary>
     public static object?[,] ToGrid(QueryResult result, bool includeHeaders)
     {

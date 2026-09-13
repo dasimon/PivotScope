@@ -3,12 +3,12 @@ using CubeScope.Core.Models;
 namespace PivotScope.Core.Provenance;
 
 /// <summary>
-/// Tout ce qu'on peut dire d'une cellule du TCD.
+/// Everything that can be said about a PivotTable cell.
 ///
-/// <see cref="Note"/> porte les réponses qui n'en sont pas moins des réponses :
-/// « cette mesure est physique, elle n'a pas d'expression », « le script du cube
-/// n'a pas pu être lu ». Ce ne sont pas des erreurs, et l'interface ne doit pas
-/// les afficher comme telles.
+/// <see cref="Note"/> carries the answers that are answers all the same:
+/// "this measure is physical, it has no expression", "the cube script could
+/// not be read". These are not errors, and the UI must not display them as
+/// such.
 /// </summary>
 public sealed record CellProvenance(
     string Tuple,

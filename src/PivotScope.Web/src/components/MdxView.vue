@@ -23,8 +23,8 @@ async function copy() {
       </button>
     </div>
 
-    <!-- PivotTable.MDX lève quand le TCD n'a aucun élément de données :
-         l'add-in renvoie alors null plutôt qu'une erreur. -->
+    <!-- PivotTable.MDX throws when the PivotTable has no data field:
+         the add-in then returns null rather than an error. -->
     <p v-if="!mdx" class="notice">{{ t('mdx.empty') }}</p>
 
     <pre v-else>{{ mdx }}</pre>

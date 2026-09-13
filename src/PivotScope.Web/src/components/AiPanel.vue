@@ -22,8 +22,8 @@ const { t } = useI18n()
 
 const mdx = ref('')
 
-// Le bouton « Expliquer avec l'IA » de l'onglet « Ce chiffre » dépose ici
-// l'expression à analyser.
+// The "Expliquer avec l'IA" button of the "Ce chiffre" tab drops the
+// expression to analyse here.
 watch(
   () => props.seed,
   value => { if (value) mdx.value = value },

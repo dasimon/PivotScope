@@ -40,8 +40,8 @@ onMounted(() => {
     if (value !== props.modelValue) emit('update:modelValue', value)
   })
 
-  // F5 et Ctrl+Entrée : les deux raccourcis qu'un développeur SSAS a dans les
-  // doigts, l'un venant de SSMS, l'autre de partout ailleurs.
+  // F5 and Ctrl+Enter: the two shortcuts an SSAS developer has in muscle
+  // memory, one from SSMS, the other from everywhere else.
   editor.addCommand(monaco.KeyCode.F5, () => emit('run'))
   editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => emit('run'))
 })
@@ -54,7 +54,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  // Sans ça, chaque réouverture du volet laisse un éditeur derrière elle.
+  // Without this, every reopening of the pane leaves an editor behind.
   editor?.dispose()
   editor = null
 })

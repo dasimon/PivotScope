@@ -2,7 +2,7 @@ using CubeScope.Core.Models;
 
 namespace PivotScope.Core.Abstractions;
 
-/// <summary>Lecture du MDX Script d'un cube. Implémenté par un adaptateur CubeScope.</summary>
+/// <summary>Reads the MDX Script of a cube. Implemented by a CubeScope adapter.</summary>
 public interface IScriptReader
 {
     Task<CubeScript> GetScriptAsync(string cube, CancellationToken ct = default);

@@ -5,19 +5,19 @@ using Xl = Microsoft.Office.Interop.Excel;
 namespace PivotScope.AddIn.Interop;
 
 /// <summary>
-/// Prévient le volet quand ce qu'il affiche n'est plus d'actualité.
+/// Tells the task pane when what it shows is out of date.
 ///
-/// Sans ça, le volet montre l'état du TCD tel qu'il était au dernier clic sur
-/// « Actualiser » — c'est-à-dire potentiellement faux, sans rien signaler.
-/// C'était pourtant l'argument principal contre la boîte de dialogue modale de
-/// l'add-in d'origine : un volet qui ne suit pas n'est qu'une boîte qu'on ne
-/// referme pas.
+/// Without it, the pane shows the PivotTable state as it was at the last click on
+/// "Actualiser" — that is, potentially wrong, without any warning.
+/// Yet that was the main argument against the original add-in's modal
+/// dialog box: a pane that does not keep up is just a dialog that is never
+/// closed.
 ///
-/// Deux précautions :
-/// — on ne notifie que si le TCD ou la cellule ont réellement changé, sinon
-///   chaque déplacement de curseur déclencherait un aller-retour ;
-/// — les gestionnaires d'événements Excel ne doivent JAMAIS lever : une
-///   exception qui remonte dans le pompage d'événements d'Excel le déstabilise.
+/// Two precautions:
+/// — notify only if the PivotTable or the cell has really changed, otherwise
+///   every cursor move would trigger a round trip;
+/// — Excel event handlers must NEVER throw: an exception that bubbles up
+///   into Excel's event pump destabilizes it.
 /// </summary>
 internal sealed class PivotWatcher : IDisposable
 {
@@ -29,8 +29,8 @@ internal sealed class PivotWatcher : IDisposable
     private bool _disposed;
 
     /// <param name="onChanged">
-    /// Reçoit vrai si le TCD lui-même a changé (contexte à relire entièrement),
-    /// faux si seule la cellule active a bougé (provenance uniquement).
+    /// Receives true if the PivotTable itself has changed (context to be fully re-read),
+    /// false if only the active cell has moved (provenance only).
     /// </param>
     internal PivotWatcher(Action<bool> onChanged)
     {
@@ -60,8 +60,8 @@ internal sealed class PivotWatcher : IDisposable
     }
 
     /// <summary>
-    /// Le TCD a été remanié — champ déposé, filtre appliqué, actualisation.
-    /// Le contexte est forcément périmé.
+    /// The PivotTable has been reworked — field dropped, filter applied, refresh.
+    /// The context is necessarily stale.
     /// </summary>
     private void OnPivotUpdate(object sheet, Xl.PivotTable target)
         => Safe(() => { _lastPivot = string.Empty; _onChanged(true); });
@@ -82,8 +82,8 @@ internal sealed class PivotWatcher : IDisposable
     }
 
     /// <summary>
-    /// Un gestionnaire d'événement Excel qui lève déstabilise le pompage
-    /// d'événements : on avale et on journalise, toujours.
+    /// An Excel event handler that throws destabilizes the event
+    /// pump: swallow and log, always.
     /// </summary>
     private static void Safe(Action work)
     {
@@ -96,8 +96,8 @@ internal sealed class PivotWatcher : IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        try { _app.SheetSelectionChange -= OnSelectionChange; } catch { /* Excel ferme */ }
-        try { _app.SheetPivotTableUpdate -= OnPivotUpdate; } catch { /* Excel ferme */ }
-        try { _app.WorkbookActivate -= OnWorkbookActivate; } catch { /* Excel ferme */ }
+        try { _app.SheetSelectionChange -= OnSelectionChange; } catch { /* Excel is closing */ }
+        try { _app.SheetPivotTableUpdate -= OnPivotUpdate; } catch { /* Excel is closing */ }
+        try { _app.WorkbookActivate -= OnWorkbookActivate; } catch { /* Excel is closing */ }
     }
 }

@@ -6,19 +6,19 @@ using Xl = Microsoft.Office.Interop.Excel;
 namespace PivotScope.AddIn.Interop;
 
 /// <summary>
-/// Applique un filtre manuel inclusif sur un niveau d'un champ du TCD.
+/// Applies an inclusive manual filter on a level of a PivotTable field.
 ///
-/// Trois pièges, tous silencieux ou trompeurs si on les ignore :
-/// 1. ClearManualFilter doit être appelé sur le CubeField ; sur un PivotField
-///    en OLAP, il lève une erreur d'exécution (documenté).
-/// 2. Si IncludeNewItemsInFilter vaut True, VisibleItemsList « reste vide et
-///    n'accepte aucun élément » (documenté) : l'affectation ne fait rien.
-/// 3. Un CubeField de hiérarchie expose UN PivotField PAR NIVEAU. Écrire des
-///    noms uniques du niveau « Magasin » dans le PivotField du niveau
-///    « Etablissement » fait répondre à Excel « Élément introuvable dans le
-///    cube OLAP » — constaté sur un cube réel. Il faut viser le bon niveau.
+/// Three pitfalls, all silent or misleading if ignored:
+/// 1. ClearManualFilter must be called on the CubeField; on a PivotField
+///    in OLAP, it raises a run-time error (documented).
+/// 2. If IncludeNewItemsInFilter is True, VisibleItemsList "stays empty and
+///    accepts no item" (documented): the assignment does nothing.
+/// 3. A hierarchy CubeField exposes ONE PivotField PER LEVEL. Writing
+///    unique names of the "Magasin" level into the PivotField of the
+///    "Etablissement" level makes Excel answer "Élément introuvable dans le
+///    cube OLAP" — observed on a real cube. You must target the right level.
 ///
-/// À appeler exclusivement via <see cref="ExcelThread"/>.
+/// Call exclusively through <see cref="ExcelThread"/>.
 /// </summary>
 public static class PivotFilterApplier
 {
@@ -34,7 +34,7 @@ public static class PivotFilterApplier
         var app = (Xl.Application)ExcelDnaUtil.Application;
 
         Xl.PivotTable? pivot = null;
-        try { pivot = app.ActiveCell?.PivotTable; } catch { /* hors TCD */ }
+        try { pivot = app.ActiveCell?.PivotTable; } catch { /* outside a PivotTable */ }
 
         if (pivot is null)
             throw new InvalidOperationException(
@@ -60,10 +60,10 @@ public static class PivotFilterApplier
     }
 
     /// <summary>
-    /// Retrouve le PivotField correspondant au niveau demandé. Le nommage exact
-    /// des PivotField d'une hiérarchie OLAP n'est pas documenté : on essaie le
-    /// nom unique du niveau, puis son dernier segment, et en dernier recours on
-    /// journalise tous les candidats pour ne pas avoir à deviner deux fois.
+    /// Finds the PivotField matching the requested level. The exact naming
+    /// of the PivotFields of an OLAP hierarchy is not documented: we try the
+    /// level's unique name, then its last segment, and as a last resort we
+    /// log all candidates so we never have to guess twice.
     /// </summary>
     private static Xl.PivotField FindPivotFieldForLevel(
         Xl.CubeField field, string levelUniqueName)
@@ -92,7 +92,7 @@ public static class PivotFilterApplier
             $"Niveau '{levelUniqueName}' introuvable parmi les PivotFields de " +
             $"'{field.Name}'. Candidats :{inventory}");
 
-        // Un seul niveau : pas d'ambiguïté possible, on l'utilise.
+        // A single level: no ambiguity possible, use it.
         if (candidates.Count == 1) return candidates[0];
 
         throw new InvalidOperationException(
@@ -105,7 +105,7 @@ public static class PivotFilterApplier
            (string.Equals(value, levelUniqueName, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(value, levelName, StringComparison.OrdinalIgnoreCase));
 
-    /// <summary>« [Dim].[Hier].[Magasin] » → « Magasin ».</summary>
+    /// <summary>"[Dim].[Hier].[Magasin]" → "Magasin".</summary>
     private static string LastSegment(string uniqueName)
     {
         var last = uniqueName.LastIndexOf(".[", StringComparison.Ordinal);

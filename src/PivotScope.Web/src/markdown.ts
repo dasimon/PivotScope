@@ -1,10 +1,10 @@
 /**
- * Rendu Markdown minimal pour les réponses de l'IA.
+ * Minimal Markdown rendering for the AI's answers.
  *
- * Volontairement écrit à la main plutôt que d'ajouter `marked` : on n'a besoin
- * que de six constructions, et **tout est échappé d'abord**. La sortie d'un
- * modèle est une entrée non fiable comme une autre — l'injecter en HTML brut
- * dans le volet serait une faute.
+ * Deliberately hand-written rather than adding `marked`: we only need
+ * six constructs, and **everything is escaped first**. A model's output
+ * is untrusted input like any other — injecting it as raw HTML
+ * into the pane would be a mistake.
  */
 
 function escapeHtml(text: string): string {

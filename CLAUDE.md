@@ -1,216 +1,218 @@
 # PivotScope
 
-Complément Excel pour développeur SSAS **Multidimensional** : écrire, exécuter
-et comprendre du MDX là où on travaille vraiment — dans le tableau croisé
-dynamique qu'on a sous les yeux. Frère de [CubeScope](https://github.com/dasimon/CubeScope),
-dont il réutilise le moteur.
+Excel add-in for SSAS **Multidimensional** developers: write, run and
+understand MDX where the work actually happens — in the PivotTable right in
+front of you. Sibling of [CubeScope](https://github.com/dasimon/CubeScope),
+whose engine it reuses.
 
-**Hors périmètre définitif : Tabular, Power BI, DAX, Power Pivot.** Ne jamais
-introduire d'abstraction multi-moteurs « au cas où ».
+**Permanently out of scope: Tabular, Power BI, DAX, Power Pivot.** Never
+introduce a multi-engine abstraction "just in case".
 
-Inspiré de OLAP PivotTable Extensions (Greg Galloway, Ms-PL), **sans aucune
-reprise de code** : PivotScope est sous MIT.
+Inspired by OLAP PivotTable Extensions (Greg Galloway, Ms-PL), **without any
+code reuse**: PivotScope is MIT-licensed.
 
-## Décisions d'architecture (actées — ne pas rouvrir sans raison forte)
+## Architecture decisions (settled — do not reopen without a strong reason)
 
-- **Excel-DNA**, cible `net10.0-windows`, **x64 uniquement**. VSTO est exclu
-  (Microsoft : « VSTO Add-Ins can't be created with .NET »), Office.js aussi
-  (« PivotTables created with OLAP are not currently supported »).
-- **Volet Office (CustomTaskPane) hébergeant WebView2**, qui affiche une SPA
-  Vue 3 + Monaco. Validé sur poste réel : le focus clavier fonctionne.
-- **SPA embarquée en ressources**, servie sur l'origine virtuelle
-  `https://pivotscope.local/` par interception de `WebResourceRequested`.
-  Aucun fichier extrait sur disque.
-- **Pont `postMessage`** (`{id, method, params}` → `{id, ok, result|error}`),
-  pas `AddHostObjectToScript`. Le routeur **ne lève jamais** : une exception
-  laisserait une promesse pendante côté SPA.
-- **`PivotScope.Core` ne référence jamais `Microsoft.Office.Interop.Excel`.**
-  C'est ce qui rend la logique testable sans Excel.
-- **CubeScope.Core en sous-module git épinglé**, derrière `ICubeMetadataReader`
-  / `IMdxExecutor` / `ILevelMemberReader` — le mécanisme de partage reste donc
-  remplaçable.
-- **Aucune `MessageBox`** : bandeau dans le volet, plus log fichier dans
+- **Excel-DNA**, target `net10.0-windows`, **x64 only**. VSTO is ruled out
+  (Microsoft: "VSTO Add-Ins can't be created with .NET"), and so is Office.js
+  ("PivotTables created with OLAP are not currently supported").
+- **Office task pane (CustomTaskPane) hosting WebView2**, which displays a
+  Vue 3 + Monaco SPA. Validated on a real machine: keyboard focus works.
+- **SPA embedded as resources**, served on the virtual origin
+  `https://pivotscope.local/` by intercepting `WebResourceRequested`.
+  No file is extracted to disk.
+- **`postMessage` bridge** (`{id, method, params}` → `{id, ok, result|error}`),
+  not `AddHostObjectToScript`. The router **never throws**: an exception
+  would leave a pending promise on the SPA side.
+- **`PivotScope.Core` never references `Microsoft.Office.Interop.Excel`.**
+  That is what makes the logic testable without Excel.
+- **CubeScope.Core as a pinned git submodule**, behind `ICubeMetadataReader`
+  / `IMdxExecutor` / `ILevelMemberReader` — so the sharing mechanism stays
+  replaceable.
+- **No `MessageBox`**: a banner in the pane, plus a file log in
   `%LOCALAPPDATA%\PivotScope\logs`.
 
-## Pièges connus (payés une fois, ne pas les redécouvrir)
+## Known pitfalls (paid for once, do not rediscover them)
 
-### Excel-DNA et COM
+### Excel-DNA and COM
 
-- **Un `CustomTaskPane` instancie son contrôle par COM.** Sans
-  `[ComVisible(true)]` + `[ComDefaultInterface(typeof(I…))]` sur une interface
-  (même vide), `CreateCTP` échoue en `COMException 0x80004005` « Impossible de
-  créer le contrôle ActiveX spécifié ». Corollaire : tout membre public du
-  contrôle est candidat à l'exposition COM, et un événement générique
-  (`EventHandler<string>`) n'y est pas représentable → garder la surface
-  publique vide, tout le reste `internal`.
-- **Excel-DNA produit par défaut un `.xll` 32 bits ET un 64 bits.** Charger le
-  32 bits dans un Excel 64 bits donne « le format et l'extension du fichier ne
-  correspondent pas », qui fait croire à un fichier corrompu.
-  `ExcelDnaCreate32BitAddIn=false` : un seul livrable.
-- **Excel verrouille le `.xll` et ses DLL** tant que le processus vit — un seul
-  classeur ouvert, même sans rapport, suffit. Pour builder sans quitter Excel :
-  décocher PivotScope dans Options → Compléments → Atteindre. MSBuild nomme le
-  verrou : « Le fichier est verrouillé par : "Microsoft Excel (PID)" ».
-- **Threading** : Excel est STA sur son thread principal, les messages WebView2
-  arrivent sur le thread UI. Tout appel COM passe par `ExcelThread` — sinon
-  `RPC_E_SERVERCALL_RETRYLATER` intermittent.
-- **Culture** : sur un Excel français, les API COM qui prennent des chaînes de
-  formule attendent l'anglais. Bascule confinée à `InvariantFormattingScope`,
-  appliquée à la frontière COM uniquement.
+- **A `CustomTaskPane` instantiates its control through COM.** Without
+  `[ComVisible(true)]` + `[ComDefaultInterface(typeof(I…))]` on an interface
+  (even an empty one), `CreateCTP` fails with `COMException 0x80004005` "Unable
+  to create specified ActiveX control". Corollary: every public member of the
+  control is a candidate for COM exposure, and a generic event
+  (`EventHandler<string>`) cannot be represented there → keep the public
+  surface empty, everything else `internal`.
+- **By default Excel-DNA produces a 32-bit `.xll` AND a 64-bit one.** Loading
+  the 32-bit one into a 64-bit Excel gives "the file format and extension
+  don't match", which makes you think the file is corrupted.
+  `ExcelDnaCreate32BitAddIn=false`: a single deliverable.
+- **Excel locks the `.xll` and its DLLs** as long as the process lives — a
+  single open workbook, even an unrelated one, is enough. To build without
+  quitting Excel: untick PivotScope in Options → Add-ins → Go. MSBuild names
+  the lock: "The file is locked by: "Microsoft Excel (PID)"".
+- **Threading**: Excel is STA on its main thread, WebView2 messages arrive
+  on the UI thread. Every COM call goes through `ExcelThread` — otherwise
+  intermittent `RPC_E_SERVERCALL_RETRYLATER`.
+- **Culture**: on a French Excel, COM APIs that take formula strings expect
+  English. The switch is confined to `InvariantFormattingScope`, applied at
+  the COM boundary only.
 
-### Objet PivotTable
+### PivotTable object
 
-- **Un `CubeField` de hiérarchie expose UN `PivotField` PAR NIVEAU.** Écrire
-  `VisibleItemsList` sur le mauvais niveau fait répondre « Élément introuvable
-  dans le cube OLAP ». Le nommage de ces `PivotField` n'est pas documenté :
-  `PivotFilterApplier` essaie le nom unique du niveau, son dernier segment et
-  la caption, puis **journalise tous les candidats**.
-- **`CubeField.IncludeNewItemsInFilter` doit valoir `False`** avant d'écrire
-  `VisibleItemsList`, sinon l'affectation est **silencieusement sans effet**.
-  Et `ClearManualFilter` s'appelle sur le `CubeField`, pas le `PivotField`.
-- **Excel ne matérialise le `CubeField` d'une mesure de session qu'après un
-  rafraîchissement.** Créer une mesure calculée puis chercher son cube field
-  échoue : il faut `RefreshTable()` d'abord. (C'est à quoi servait le « Refresh
-  data by default » de l'add-in d'origine.)
-- **`CalculatedMember.IsValid` renvoie `True` sur un TCD déconnecté** :
-  appeler `PivotCache.MakeConnection()` avant de s'y fier.
-- **`PivotCache.MissingItemsLimit` ne marche que sur les TCD NON-OLAP.** Ce
-  n'est pas la mécanique du « Clear Cache » ; l'original recrée la connexion du
-  classeur.
-- `NumberFormat` n'est valide que pour un **membre** calculé, `DisplayFolder`
-  que pour une **mesure**. Hors de ces cas, le réglage est accepté puis ignoré.
-- `PivotTable.MDX` lève si le TCD n'a aucun élément de données.
-- `PivotCell.MDX` lève hors zone de valeurs et sur un filtre de rapport en
-  sélection multiple.
-- `CubeFields.GetMeasure` **ne sert pas** à afficher une mesure calculée : il ne
-  concerne que les mesures implicites d'une hiérarchie d'attribut, et seulement
-  pour Count/Sum/Average/Max/Min. Utiliser `AddDataField(cubeField, …)`.
+- **A hierarchy `CubeField` exposes ONE `PivotField` PER LEVEL.** Writing
+  `VisibleItemsList` on the wrong level answers "The item could not be found
+  in the OLAP cube". The naming of these `PivotField`s is not documented:
+  `PivotFilterApplier` tries the level's unique name, its last segment and
+  the caption, then **logs all the candidates**.
+- **`CubeField.IncludeNewItemsInFilter` must be `False`** before writing
+  `VisibleItemsList`, otherwise the assignment **silently has no effect**.
+  And `ClearManualFilter` is called on the `CubeField`, not the `PivotField`.
+- **Excel only materializes the `CubeField` of a session measure after a
+  refresh.** Creating a calculated measure then looking for its cube field
+  fails: `RefreshTable()` must come first. (That is what the "Refresh
+  data by default" of the original add-in was for.)
+- **`CalculatedMember.IsValid` returns `True` on a disconnected PivotTable**:
+  call `PivotCache.MakeConnection()` before relying on it.
+- **`PivotCache.MissingItemsLimit` only works on NON-OLAP PivotTables.** It
+  is not the mechanism behind "Clear Cache"; the original recreates the
+  workbook's connection.
+- `NumberFormat` is only valid for a calculated **member**, `DisplayFolder`
+  only for a **measure**. Outside these cases, the setting is accepted then
+  ignored.
+- `PivotTable.MDX` throws if the PivotTable has no data item.
+- `PivotCell.MDX` throws outside the values area and on a multi-select report
+  filter.
+- `CubeFields.GetMeasure` **is not** for displaying a calculated measure: it
+  only concerns the implicit measures of an attribute hierarchy, and only
+  for Count/Sum/Average/Max/Min. Use `AddDataField(cubeField, …)`.
 
-### SSAS et MDX
+### SSAS and MDX
 
-- **Ne JAMAIS passer par `$SYSTEM.MDSCHEMA_MEMBERS`** : pas de support de `IN`,
-  et un filtre sur `MEMBER_UNIQUE_NAME` scanne la dimension entière. Tout passe
-  par MDX.
-- **`StrToMember` sur un membre inexistant ne lève pas**, il renvoie `null`
-  (constaté sur cube réel).
-- L'utilisateur colle des **libellés**, pas des clés (« Aurore » quand la clé est
-  « PRD014 »). `MemberResolver` essaie : nom unique complet → clé → libellé, et
-  l'énumération d'un niveau ne coûte que ~79 ms pour 3 157 membres.
-- Un libellé porté par **plusieurs** membres est signalé comme ambigu, jamais
-  résolu au hasard : filtrer le mauvais membre produirait un chiffre faux.
+- **NEVER go through `$SYSTEM.MDSCHEMA_MEMBERS`**: no support for `IN`,
+  and a filter on `MEMBER_UNIQUE_NAME` scans the entire dimension. Everything
+  goes through MDX.
+- **`StrToMember` on a non-existent member does not throw**, it returns `null`
+  (observed on a real cube).
+- The user pastes **captions**, not keys ("Aurore" when the key is
+  "PRD014"). `MemberResolver` tries: full unique name → key → caption, and
+  enumerating a level only costs ~79 ms for 3,157 members.
+- A caption carried by **several** members is reported as ambiguous, never
+  resolved at random: filtering on the wrong member would produce a wrong figure.
 
-### Front
+### Front end
 
-- **Ne pas enfermer Monaco dans un `<label>`** : un label intercepte les clics
-  et redirige le focus vers son premier contrôle, Monaco ne peut plus le
-  prendre. Utiliser `.field` / `.field-label`.
-- **Monaco auto-ferme les crochets** : taper `[` écrit `[]`. Une complétion qui
-  insère son propre `]` produit `]]` — la plage remplacée doit avaler le
-  crochet qui traîne.
-- **`%(RecursiveDir)` rend un ANTISLASH** sous Windows : sans normalisation, le
-  worker Monaco s'embarque en `spa/assets\x.js` alors que l'URL demande des
-  slashes → 404 muet et éditeur mort. Vérifier avec
-  `GetManifestResourceNames()`, pas à l'œil.
-- Les trois pièges MSBuild d'embarquement hérités de CubeScope : hooker
-  `PrepareForBuild` (à `CoreCompile` la liste est figée, 0 ressource) ; passer
-  par un item intermédiaire qualifié pour le `LogicalName` (sinon `%(Filename)`
-  s'évalue vide → `CS1508`) ; glob `**\*.*` et non `**\*`.
-- **`System.Text.Json` sérialise les enums en nombres** par défaut : la SPA
-  comparerait `2` à `"Measure"`. `JsonStringEnumConverter` posé sur le pont, et
-  un test le verrouille.
-- **`monaco-editor` 0.56 tire un `dompurify` vulnérable.** `npm audit fix
-  --force` propose de rétrograder Monaco en 0.53, ce qui casserait l'exports map
-  utilisée par `monaco-core` : forcer la transitive par `overrides` à la place.
-- `monaco-core.ts` est la liste d'imports de Monaco dégraissé, reprise de
-  CubeScope : **à resynchroniser à chaque montée de version de monaco**.
+- **Do not wrap Monaco in a `<label>`**: a label intercepts clicks
+  and redirects focus to its first control, so Monaco can no longer take
+  it. Use `.field` / `.field-label`.
+- **Monaco auto-closes brackets**: typing `[` writes `[]`. A completion that
+  inserts its own `]` produces `]]` — the replaced range must swallow the
+  trailing bracket.
+- **`%(RecursiveDir)` yields a BACKSLASH** on Windows: without normalization,
+  the Monaco worker is embedded as `spa/assets\x.js` while the URL asks for
+  slashes → silent 404 and a dead editor. Check with
+  `GetManifestResourceNames()`, not by eye.
+- The three MSBuild embedding pitfalls inherited from CubeScope: hook
+  `PrepareForBuild` (at `CoreCompile` the list is frozen, 0 resources); go
+  through a qualified intermediate item for the `LogicalName` (otherwise
+  `%(Filename)` evaluates to empty → `CS1508`); glob `**\*.*` and not `**\*`.
+- **`System.Text.Json` serializes enums as numbers** by default: the SPA
+  would compare `2` to `"Measure"`. `JsonStringEnumConverter` is set on the
+  bridge, and a test locks it in.
+- **`monaco-editor` 0.56 pulls in a vulnerable `dompurify`.** `npm audit fix
+  --force` offers to downgrade Monaco to 0.53, which would break the exports
+  map used by `monaco-core`: force the transitive dependency through
+  `overrides` instead.
+- `monaco-core.ts` is the import list of the slimmed-down Monaco, taken from
+  CubeScope: **resynchronize it on every monaco version bump**.
 
-## Conventions de travail
+## Working conventions
 
-- Chaque phase se termine par un binaire utilisable au quotidien.
-- Messages d'interface en français, code et symboles en anglais.
-- L'interop Excel n'est pas testable automatiquement : la contrepartie est
-  [`docs/recette.md`](docs/recette.md), déroulée avant chaque tag.
-- **Quand l'interop résiste, journaliser l'inventaire réel** (les `CubeFields`,
-  les `PivotFields`, leurs noms et types) avant de lever. Ce réflexe a résolu
-  trois bugs que la documentation seule ne permettait pas de trancher.
+- Each phase ends with a binary usable day to day.
+- Interface messages in French, code and symbols in English.
+- Excel interop cannot be tested automatically: the counterpart is
+  [`docs/recette.md`](docs/recette.md), run before each tag.
+- **When the interop resists, log the actual inventory** (the `CubeFields`,
+  the `PivotFields`, their names and types) before throwing. This reflex solved
+  three bugs that the documentation alone could not settle.
 
-## Statut
+## Status
 
-**Phases 0 et 1 (2026-07-27)** — volet suivant le TCD actif, MDX généré,
-explorateur de métadonnées, filtre par liste de clés ou de libellés.
+**Phases 0 and 1 (2026-07-27)** — pane following the active PivotTable,
+generated MDX, metadata explorer, filter by list of keys or captions.
 
-**Phase 2 (2026-07-27)** — éditeur Monaco MDX avec complétion contextuelle,
-requête libre → plage Excel (annulable jusqu'au serveur), calculs MDX
-(mesures, membres, ensembles) avec format de nombre, bibliothèque SQLite,
-confort de construction du TCD avec indicateur au ruban.
+**Phase 2 (2026-07-27)** — Monaco MDX editor with contextual completion,
+free query → Excel range (cancellable all the way to the server), MDX
+calculations (measures, members, sets) with number format, SQLite library,
+PivotTable building conveniences with a ribbon indicator.
 
-**Phase 3 (2026-07-27)** — « d'où vient ce chiffre » (tuple complet, expression,
-graphe de dépendances), assistant MDX enrichi du contexte du TCD, menu
-contextuel limité à trois entrées.
+**Phase 3 (2026-07-27)** — "where does this figure come from" (full tuple,
+expression, dependency graph), MDX assistant enriched with the PivotTable
+context, context menu limited to three entries.
 
-Phases 0 à 2 validées bout en bout sur `SSAS01` / `Analytics` /
-`Ventes` ; phase 3 en attente de recette.
+Phases 0 to 2 validated end to end on `SSAS01` / `Analytics` /
+`Ventes`; phase 3 awaiting acceptance testing.
 
-Limitation connue de l'assistant : `AiService.RunAsync` bâtit son contexte cube
-à partir de `cubes[0]` du catalogue, pas du cube courant. Sur un catalogue
-multi-cubes le contexte injecté est **appauvri**, pas faux. Si la qualité des
-réponses en souffre, ajouter un paramètre `cube` à `RunAsync` dans le
-sous-module — ce serait aussi un correctif pour CubeScope.
+Known limitation of the assistant: `AiService.RunAsync` builds its cube context
+from `cubes[0]` of the catalog, not from the current cube. On a multi-cube
+catalog the injected context is **impoverished**, not wrong. If the quality of
+the answers suffers, add a `cube` parameter to `RunAsync` in the
+submodule — it would also be a fix for CubeScope.
 
-**Packaging (2026-07-27)** — `build\pack.ps1` produit un dossier de 4 fichiers
-(le `.xll` empaqueté + trois natives) et son zip, au lieu des 76 fichiers du
-dossier de build. Workflow `release.yml` sur tag `v*`.
+**Packaging (2026-07-27)** — `build\pack.ps1` produces a folder of 4 files
+(the packed `.xll` + three natives) and its zip, instead of the 76 files of
+the build folder. `release.yml` workflow on `v*` tags.
 
-**Reste en dette** : le dépôt n'a **pas de remote** et rien n'est poussé.
+**Remaining debt**: the repository has **no remote** and nothing is pushed.
 
-### Le packaging, en pratique
+### Packaging, in practice
 
-- `ExcelDnaPack` ne tourne qu'au **`dotnet publish`**, pas au `build` : pour un
-  projet SDK, `ExcelDnaPublishPath` reste vide et l'empaquetage vise le dossier
-  de publication. Le `.xll` empaqueté sort dans `bin\<conf>\<tfm>\publish\`.
-- `ExcelDnaPackNativeLibraryDependencies=true` est posé dans le `.csproj` mais
-  **reste sans effet observable** avec ExcelDna.AddIn 1.9 : le `.xll` fait la
-  même taille et ne contient ni `e_sqlite3` ni `WebView2Loader`. D'où les
-  natives livrées à côté, dans `runtimes\win-x64\native\` — l'emplacement où
-  .NET les résout. À réessayer à la prochaine montée d'Excel-DNA.
-- **Un `.ps1` contenant des accents doit avoir un BOM UTF-8** : Windows
-  PowerShell 5.1 lit sinon le fichier en ANSI et échoue à l'analyse. `pwsh` n'a
-  pas ce défaut, mais on ne choisit pas l'interpréteur de celui qui lance.
-- Le seul test qui vaut : extraire le zip dans un dossier **isolé** et charger
-  le `.xll` de là. Enregistrer un calcul dans la bibliothèque exerce SQLite,
-  donc la résolution des natives.
+- `ExcelDnaPack` only runs on **`dotnet publish`**, not on `build`: for an
+  SDK project, `ExcelDnaPublishPath` stays empty and packing targets the
+  publish folder. The packed `.xll` comes out in `bin\<conf>\<tfm>\publish\`.
+- `ExcelDnaPackNativeLibraryDependencies=true` is set in the `.csproj` but
+  **has no observable effect** with ExcelDna.AddIn 1.9: the `.xll` has the
+  same size and contains neither `e_sqlite3` nor `WebView2Loader`. Hence the
+  natives shipped alongside, in `runtimes\win-x64\native\` — the location where
+  .NET resolves them. Retry on the next Excel-DNA upgrade.
+- **A `.ps1` containing accented characters must have a UTF-8 BOM**: otherwise
+  Windows PowerShell 5.1 reads the file as ANSI and fails to parse it. `pwsh`
+  does not have this flaw, but we do not choose the interpreter of whoever runs it.
+- The only test that counts: extract the zip into an **isolated** folder and
+  load the `.xll` from there. Saving a calculation in the library exercises
+  SQLite, and therefore native resolution.
 
-**Phase 4 : suspendue.** Elle devait mesurer si Excel interroge le serveur lors
-d'une opération sur le TCD. La question s'est réglée sans code : copier la
-requête affichée par PivotScope et la rejouer dans CubeScope suffit — elle est
-lente en elle-même, le coût est **dans le cube**. Un second profileur ici
-serait un doublon de celui de CubeScope. Les deux outils se composent : l'un
-montre la requête, l'autre la dissèque.
+**Phase 4: suspended.** It was meant to measure whether Excel queries the server
+during an operation on the PivotTable. The question was settled without code:
+copying the query displayed by PivotScope and replaying it in CubeScope is
+enough — it is slow on its own, the cost is **in the cube**. A second profiler
+here would duplicate CubeScope's. The two tools compose: one
+shows the query, the other dissects it.
 
-**Clear PivotTable Cache** reste hors périmètre : seule fonction de la feuille
-de route qui modifie la connexion du classeur de l'utilisateur.
+**Clear PivotTable Cache** remains out of scope: the only feature on the
+roadmap that modifies the connection of the user's workbook.
 
-### Interface bilingue
+### Bilingual interface
 
-- `en.ts` est typé **`typeof fr`** : une clé oubliée devient une erreur de
-  compilation, pas un texte vide découvert en production.
-- **Ne jamais écrire `|` dans un message** vue-i18n : c'est le séparateur de
-  pluriel, le texte serait coupé en silence.
-- Le ruban et le menu contextuel **ne peuvent pas** passer par vue-i18n : ils
-  vivent dans Excel. Ils suivent la langue d'**Excel** (`LanguageSettings`),
-  fixée au chargement — un ruban qui changerait de langue en cours de session
-  demanderait de le reconstruire entièrement, pour une quinzaine de mots.
-- Le XML du ruban est **assemblé et échappé** (`SecurityElement.Escape`) : une
-  apostrophe non échappée rend le ruban invalide, et Excel l'ignore en silence.
-- Restent dans la langue du serveur, hors de notre contrôle : les erreurs SSAS
-  et les messages d'Excel.
+- `en.ts` is typed **`typeof fr`**: a forgotten key becomes a compilation
+  error, not an empty text discovered in production.
+- **Never write `|` in a vue-i18n message**: it is the plural
+  separator, the text would be silently cut.
+- The ribbon and the context menu **cannot** go through vue-i18n: they
+  live in Excel. They follow **Excel**'s language (`LanguageSettings`),
+  fixed at load time — a ribbon that changed language mid-session
+  would need to be rebuilt entirely, for about fifteen words.
+- The ribbon XML is **assembled and escaped** (`SecurityElement.Escape`): an
+  unescaped apostrophe makes the ribbon invalid, and Excel silently ignores it.
+- Out of our control, these stay in the server's language: SSAS errors
+  and Excel's messages.
 
-### Sur la lenteur d'un TCD, ce qu'il faut savoir
+### On PivotTable slowness, what you need to know
 
-- Un TCD OLAP **froid** paie le prix entier de sa requête ; ensuite tout est en
-  cache. Mesuré sur un cube réel : 5 minutes puis ~130 ms.
-- **`PivotTable.MDX` ne reflète pas la visibilité des niveaux.** Comparer cette
-  requête avant/après une opération ne prouve rien — instrument abandonné après
-  l'avoir cru concluant à tort. Seul le temps mesuré est informatif.
-- Le bon réflexe de diagnostic n'est pas dans PivotScope : **copier la requête
-  et la rejouer dans CubeScope**.
+- A **cold** OLAP PivotTable pays the full price of its query; after that
+  everything is cached. Measured on a real cube: 5 minutes, then ~130 ms.
+- **`PivotTable.MDX` does not reflect level visibility.** Comparing this
+  query before/after an operation proves nothing — instrument abandoned after
+  wrongly believing it conclusive. Only the measured time is informative.
+- The right diagnostic reflex is not in PivotScope: **copy the query
+  and replay it in CubeScope**.

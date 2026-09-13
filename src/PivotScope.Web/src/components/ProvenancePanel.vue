@@ -53,8 +53,8 @@ defineEmits<{
         </ul>
       </div>
 
-      <!-- Une mesure physique ou un script illisible ne sont pas des erreurs :
-           gris, pas rouge. -->
+      <!-- A physical measure or an unreadable script are not errors:
+           grey, not red. -->
       <p v-if="provenance.note" class="notice">{{ provenance.note }}</p>
 
       <template v-if="provenance.expression">

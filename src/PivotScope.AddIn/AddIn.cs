@@ -4,9 +4,9 @@ using PivotScope.AddIn.Diagnostics;
 namespace PivotScope.AddIn;
 
 /// <summary>
-/// Point d'entrée Excel-DNA. Démarrage volontairement minimal : on enregistre le
-/// ruban et rien d'autre. SSAS, SQLite et WebView2 sont initialisés
-/// paresseusement à la première ouverture du volet.
+/// Excel-DNA entry point. Startup is deliberately minimal: register the
+/// ribbon and nothing else. SSAS, SQLite and WebView2 are initialized
+/// lazily the first time the task pane opens.
 /// </summary>
 public sealed class PivotScopeAddIn : IExcelAddIn
 {
@@ -14,8 +14,8 @@ public sealed class PivotScopeAddIn : IExcelAddIn
     {
         try
         {
-            // Sans cet appel, les contrôles WinForms du volet sont rendus dans
-            // le style Windows 95 — l'exemple officiel Excel-DNA le fait aussi.
+            // Without this call, the task pane's WinForms controls are rendered in
+            // Windows 95 style — the official Excel-DNA sample does it too.
             System.Windows.Forms.Application.EnableVisualStyles();
             Interop.ContextMenu.Install();
             FileLog.Write($"PivotScope chargé (Excel {ExcelDnaUtil.ExcelVersion}).");
@@ -28,8 +28,8 @@ public sealed class PivotScopeAddIn : IExcelAddIn
 
     public void AutoClose()
     {
-        // Les CommandBars survivent au déchargement du complément : sans ce
-        // nettoyage, Excel garde des entrées mortes dans le menu contextuel.
+        // CommandBars survive the add-in being unloaded: without this
+        // cleanup, Excel keeps dead entries in the context menu.
         Interop.ContextMenu.Remove();
         FileLog.Write("PivotScope déchargé.");
     }

@@ -20,9 +20,9 @@ import ProvenancePanel from './components/ProvenancePanel.vue'
 import AiPanel from './components/AiPanel.vue'
 
 /**
- * Cinq onglets, groupés par intention plutôt que par fonction. Les huit
- * précédents débordaient d'un volet de 480 px : le dernier n'était atteignable
- * qu'en devinant qu'il existait.
+ * Five tabs, grouped by intent rather than by function. The previous eight
+ * overflowed a 480 px pane: the last one could only be reached by guessing
+ * that it existed.
  */
 const TABS = ['tableau', 'requete', 'calculs', 'provenance', 'ia'] as const
 type Tab = (typeof TABS)[number]
@@ -35,7 +35,7 @@ const meta = ref<CubeMeta | null>(null)
 const error = ref<string | null>(null)
 const busyContext = ref(false)
 const busyMeta = ref(false)
-/** Évite de reboucler sur un chargement automatique qui vient d'échouer. */
+/** Avoids looping back on an automatic load that has just failed. */
 const metaAttempted = ref(false)
 const busyFilter = ref(false)
 const busyQuery = ref(false)
@@ -81,7 +81,7 @@ const aiAnswer = ref<string | null>(null)
 const aiSeed = ref<string | null>(null)
 const busyAi = ref(false)
 
-/** Depuis « Ce chiffre » : bascule sur l'IA avec l'expression pré-remplie. */
+/** From "Ce chiffre": switches to the AI tab with the expression pre-filled. */
 function explainExpression(expression: string) {
   aiSeed.value = expression
   aiAnswer.value = null
@@ -90,22 +90,22 @@ function explainExpression(expression: string) {
 
 async function runAi(payload: { action: AiAction; mdx: string }) {
   aiAnswer.value = null
-  // La langue de l'interface est celle attendue dans la reponse : sinon on
-  // lit une explication anglaise dans un volet francais, ou l'inverse.
+  // The UI language is the one expected in the answer: otherwise you
+  // read an English explanation in a French pane, or the other way round.
   const result = await guard(busyAi, () =>
     call<AiRunResult>('ai.run', { ...payload, lang: currentLocale() }),
   )
   if (result && !result.cancelled) aiAnswer.value = result.markdown
 }
 
-// L'autocomplétion MDX suit les métadonnées du cube courant.
+// MDX autocompletion follows the metadata of the current cube.
 watch(meta, next => setCubeMeta(next))
 
 /**
- * Chaque onglet charge ce dont il a besoin en s'ouvrant. Auparavant six boutons
- * « Charger » répartis sur quatre panneaux obligeaient à deviner qu'il fallait
- * amorcer chaque section — un panneau vide ne dit pas qu'il attend un clic.
- * Les boutons subsistent pour recharger et pour voir l'erreur en cas d'échec.
+ * Each tab loads what it needs when it opens. Previously six "Charger" buttons
+ * spread over four panels forced the user to guess that each section had to be
+ * primed — an empty panel does not say it is waiting for a click.
+ * The buttons remain, to reload and to see the error when something fails.
  */
 watch(tab, async current => {
   if (!context.value?.isOlap) return
@@ -120,7 +120,7 @@ watch(tab, async current => {
   }
 })
 
-/** Toute erreur remonte dans un bandeau. Jamais de boîte de dialogue. */
+/** Every error surfaces in a banner. Never a dialog box. */
 async function guard<T>(busy: { value: boolean }, work: () => Promise<T>): Promise<T | null> {
   busy.value = true
   error.value = null
@@ -137,7 +137,7 @@ async function guard<T>(busy: { value: boolean }, work: () => Promise<T>): Promi
 async function loadContext() {
   const next = await guard(busyContext, () => call<PivotContext>('pivot.context'))
   if (!next) return
-  // Changement de cube : les métadonnées en cache ne valent plus rien.
+  // Cube change: the cached metadata is no longer worth anything.
   if (context.value?.cube !== next.cube) {
     meta.value = null
     metaAttempted.value = false
@@ -153,10 +153,10 @@ async function loadMeta() {
 }
 
 /**
- * Charge les métadonnées dès qu'un cube est connu, sans que l'utilisateur ait à
- * le demander : sans elles l'autocomplétion MDX répond « No suggestions », et
- * personne ne devinera qu'il faut d'abord passer par l'onglet Métadonnées.
- * Silencieux en cas d'échec — c'est un confort, pas une action demandée.
+ * Loads the metadata as soon as a cube is known, without the user having to
+ * ask: without it MDX autocompletion answers "No suggestions", and
+ * nobody will guess that they must first go through the Metadata tab.
+ * Silent on failure — it is a convenience, not a requested action.
  */
 async function ensureMeta() {
   if (meta.value || metaAttempted.value || busyMeta.value) return
@@ -166,7 +166,7 @@ async function ensureMeta() {
   try {
     meta.value = await call<CubeMeta>('cube.meta')
   } catch {
-    // L'utilisateur garde le bouton « Charger » pour réessayer et voir l'erreur.
+    // The user still has the "Charger" button to retry and see the error.
   }
 }
 
@@ -257,9 +257,9 @@ async function refreshAutoRefresh() {
 }
 
 /**
- * `autoRefresh = false` signifie « mise en page différée ». On passe par
- * ManualUpdate et non par EnableRefresh : ce dernier interdit l'actualisation,
- * bouton d'Excel compris, et laisse l'utilisateur sans moyen de voir son tableau.
+ * `autoRefresh = false` means "deferred layout update". We go through
+ * ManualUpdate and not EnableRefresh: the latter forbids refreshing,
+ * Excel's button included, and leaves the user with no way to see their table.
  */
 async function setAutoRefresh(enabled: boolean) {
   const next = await guard(busyComfort, () =>
@@ -275,8 +275,8 @@ async function refreshNow() {
 }
 
 async function cancelQuery() {
-  // Volontairement hors de `guard` : l'annulation ne doit ni poser le drapeau
-  // occupé ni effacer le bandeau d'erreur de la requête en cours.
+  // Deliberately outside `guard`: cancelling must neither set the busy flag
+  // nor clear the error banner of the running query.
   try {
     await call<{ cancelled: boolean }>('query.cancel')
   } catch (e) {
@@ -294,10 +294,10 @@ async function applyFilter(payload: { cubeField: string; level: string; keys: st
 }
 
 /**
- * Le volet suit le TCD au lieu d'attendre un clic sur « Actualiser ».
- * Les notifications arrivent au rythme des déplacements de curseur : on les
- * regroupe, sinon un simple parcours du tableau déclencherait autant
- * d'allers-retours que de cellules traversées.
+ * The pane follows the PivotTable instead of waiting for a click on "Actualiser".
+ * Notifications arrive at the pace of cursor moves: we batch them,
+ * otherwise simply moving across the table would trigger as many
+ * round trips as cells crossed.
  */
 let followTimer: number | undefined
 
@@ -306,8 +306,8 @@ function onPivotChanged(payload: Record<string, unknown>) {
   window.clearTimeout(followTimer)
   followTimer = window.setTimeout(() => {
     if (full) void loadContext()
-    // La provenance suit la cellule : la recharger n'a de sens que si l'onglet
-    // est visible, sinon on interrogerait le serveur pour rien.
+    // Provenance follows the cell: reloading it only makes sense if the tab
+    // is visible, otherwise we would query the server for nothing.
     else if (tab.value === 'provenance') void describeCell()
   }, 250)
 }
@@ -324,8 +324,8 @@ onMounted(() => {
   void loadContext()
   unsubscribe = onEvent('pivotChanged', onPivotChanged)
 
-  // Le menu contextuel d'Excel demande un onglet précis : sans cet abonnement,
-  // « D'où vient ce chiffre ? » ouvrait le volet sans y aller.
+  // Excel's context menu asks for a specific tab: without this subscription,
+  // "D'où vient ce chiffre ?" opened the pane without going to that tab.
   unsubscribeTab = onEvent('showTab', payload => {
     const target = payload.tab
     if (typeof target === 'string' && TABS.includes(target as Tab)) {
@@ -333,8 +333,8 @@ onMounted(() => {
     }
   })
 
-  // L'IA ne dépend que de l'environnement : on interroge son état une fois,
-  // pour que le panneau se dégrade proprement plutôt qu'à l'usage.
+  // The AI depends only on the environment: we query its status once,
+  // so the panel degrades cleanly up front rather than on use.
   void call<{ configured: boolean }>('ai.status')
     .then(s => { aiConfigured.value = s.configured })
     .catch(() => { aiConfigured.value = false })
@@ -353,9 +353,9 @@ onBeforeUnmount(() => {
     <button :title="t('app.hide')" @click="error = null">×</button>
   </div>
 
-  <!-- En-tête permanent : on sait toujours sur quoi on agit, quel que soit
-       l'onglet ouvert. Il remplace l'ancien onglet « Aperçu », qui occupait
-       une place entière pour trois lignes qu'on veut voir tout le temps. -->
+  <!-- Permanent header: you always know what you are acting on, whichever
+       tab is open. It replaces the former "Aperçu" tab, which took up
+       a whole tab for three lines you want to see all the time. -->
   <PivotHeader :context="context" :busy="busyContext" @refresh="loadContext" />
 
   <nav class="tabs">
@@ -369,8 +369,8 @@ onBeforeUnmount(() => {
   </nav>
 
   <main class="body">
-    <!-- Tout ce qui agit sur le tableau lui-même, dans l'ordre où on s'en sert :
-         voir la requête, filtrer, choisir les niveaux, régler la construction. -->
+    <!-- Everything that acts on the table itself, in the order you use it:
+         see the query, filter, choose the levels, tune how it is built. -->
     <div v-show="tab === 'tableau'" class="stack">
       <MdxView :mdx="context?.mdx ?? null" />
 
@@ -400,8 +400,8 @@ onBeforeUnmount(() => {
       />
     </div>
 
-    <!-- L'explorateur de métadonnées vit ici, replié : c'est en écrivant du MDX
-         qu'on en a besoin, pas deux onglets plus loin. -->
+    <!-- The metadata explorer lives here, collapsed: you need it while writing
+         MDX, not two tabs further along. -->
     <div v-show="tab === 'requete'" class="stack">
       <QueryPanel
         ref="queryPanel"

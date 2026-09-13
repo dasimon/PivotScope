@@ -7,12 +7,12 @@ using Xl = Microsoft.Office.Interop.Excel;
 namespace PivotScope.AddIn.Interop;
 
 /// <summary>
-/// Injecte les entrées PivotScope dans le menu contextuel du TCD.
+/// Injects the PivotScope entries into the PivotTable context menu.
 ///
-/// **Trois entrées, pas une de plus.** L'add-in d'origine en injectait huit et
-/// rendait le menu illisible ; le volet est le point d'entrée principal, le
-/// menu contextuel n'est qu'un raccourci vers les gestes qui partent d'une
-/// cellule précise.
+/// **Three entries, not one more.** The original add-in injected eight and
+/// made the menu unreadable; the task pane is the main entry point, the
+/// context menu is only a shortcut to the actions that start from a
+/// specific cell.
 /// </summary>
 public static class ContextMenu
 {
@@ -37,7 +37,7 @@ public static class ContextMenu
         }
         catch (Exception ex)
         {
-            // Un menu contextuel absent n'empêche pas d'utiliser le ruban.
+            // A missing context menu does not prevent using the ribbon.
             FileLog.Write("Échec d'installation du menu contextuel.", ex);
         }
     }
@@ -49,7 +49,7 @@ public static class ContextMenu
             var app = (Xl.Application)ExcelDnaUtil.Application;
             var bar = app.CommandBars[PivotContextMenu];
 
-            // À rebours : supprimer en avançant décale les indices restants.
+            // Backwards: deleting while moving forward shifts the remaining indices.
             for (var i = bar.Controls.Count; i >= 1; i--)
             {
                 var control = bar.Controls[i];

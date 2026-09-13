@@ -13,7 +13,7 @@
     "vue": "^3.5.13",
     "vue-i18n": "^11.4.8"
   },
-  "comment_overrides": "monaco-editor 0.56 tire dompurify 3.4.8, visé par trois advisories (<=3.4.11). npm audit fix --force rétrograderait Monaco en 0.53, ce qui casserait l'exports map utilisée par monaco-core. On force la transitive vers la version corrigée. À réévaluer quand monaco montera lui-même.",
+  "comment_overrides": "monaco-editor 0.56 pulls in dompurify 3.4.8, which is affected by three advisories (<=3.4.11). npm audit fix --force would downgrade Monaco to 0.53, which would break the exports map used by monaco-core. We force the transitive dependency to the patched version. Reassess when monaco upgrades it itself.",
   "overrides": {
     "dompurify": "^3.4.12"
   },

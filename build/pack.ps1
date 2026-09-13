@@ -1,15 +1,15 @@
 ﻿<#
 .SYNOPSIS
-    Produit le livrable PivotScope : un dossier autonome et son zip.
+    Produces the PivotScope deliverable: a self-contained folder and its zip.
 
 .DESCRIPTION
-    ExcelDnaPack fusionne toutes les assemblies managées dans un seul .xll
-    (~6 Mo). Les DLL NATIVES, elles, ne sont pas embarquées : la propriété
-    ExcelDnaPackNativeLibraryDependencies est posée dans le .csproj mais reste
-    sans effet observable avec ExcelDna.AddIn 1.9. On les place donc dans
-    runtimes\win-x64\native\, là où .NET les résout.
+    ExcelDnaPack merges all managed assemblies into a single .xll
+    (~6 MB). The NATIVE DLLs, however, are not embedded: the
+    ExcelDnaPackNativeLibraryDependencies property is set in the .csproj but has
+    no observable effect with ExcelDna.AddIn 1.9. So they are placed in
+    runtimes\win-x64\native\, where .NET resolves them.
 
-    Résultat : 4 fichiers au lieu des 76 du dossier de build.
+    Result: 4 files instead of the 76 in the build folder.
 
 .EXAMPLE
     pwsh build\pack.ps1
@@ -26,8 +26,8 @@ $repo = Split-Path -Parent $PSScriptRoot
 Push-Location $repo
 
 try {
-    # Excel garde le .xll verrouillé : mieux vaut le dire tout de suite que de
-    # laisser MSBuild échouer sur un UnauthorizedAccessException.
+    # Excel keeps the .xll locked: better to say so right away than to
+    # let MSBuild fail with an UnauthorizedAccessException.
     if (Get-Process -Name EXCEL -ErrorAction SilentlyContinue) {
         throw 'Excel est ouvert et verrouille le .xll. Fermez-le, ou décochez ' +
               'PivotScope dans Options → Compléments → Atteindre.'

@@ -2,7 +2,7 @@ using CubeScope.Core.Models;
 
 namespace PivotScope.Core.Abstractions;
 
-/// <summary>Exécution d'une requête MDX arbitraire sur le cube courant.</summary>
+/// <summary>Executes an arbitrary MDX query against the current cube.</summary>
 public interface IMdxExecutor
 {
     Task<QueryResult> ExecuteAsync(string mdx, CancellationToken ct = default);

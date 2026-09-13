@@ -26,8 +26,8 @@ public class TupleParserTests
     [Fact]
     public void Parse_NeCoupePasSurUneVirguleDansUnCrochet()
     {
-        // Un libellé de membre peut contenir une virgule : découper naïvement
-        // sur « , » casserait la coordonnée en deux.
+        // A member caption can contain a comma: naively splitting
+        // on "," would break the coordinate in two.
         var tuple = TupleParser.Parse(
             "([Measures].[VL],[Fonds].[Fonds].&[Actions, Europe])");
 

@@ -2,29 +2,29 @@
 
   <PropertyGroup>
     <UseWindowsForms>true</UseWindowsForms>
-    <!-- Excel-DNA : un seul runtime .NET Core peut être chargé dans un process
-         Excel. RollForward=Major permet de cohabiter avec un autre complément
-         qui aurait déjà chargé une version plus récente. -->
+    <!-- Excel-DNA: only one .NET Core runtime can be loaded in an Excel
+         process. RollForward=Major lets us coexist with another add-in
+         that has already loaded a newer version. -->
     <RollForward>Major</RollForward>
     <ExcelAddInFileName>PivotScope</ExcelAddInFileName>
 
-    <!-- Le projet est x64 uniquement (CubeScope.Core, ADOMD, Excel 64 bits).
-         Excel-DNA produit par défaut DEUX fichiers : PivotScope.xll en 32 bits
-         et PivotScope64.xll en 64 bits. Charger le 32 bits dans un Excel 64
-         bits échoue avec un message trompeur — « le format et l'extension du
-         fichier ne correspondent pas » — qui laisse croire à un fichier
-         corrompu. On ne génère donc que le 64 bits : un seul livrable, aucun
-         mauvais choix possible.
-         Le suffixe 64 n'est pas supprimable (les targets traitent une valeur
-         vide comme « non défini » et rappliquent leur défaut), et c'est très
-         bien ainsi : le nom dit la bitness. -->
+    <!-- The project is x64 only (CubeScope.Core, ADOMD, 64-bit Excel).
+         By default Excel-DNA produces TWO files: PivotScope.xll for 32-bit
+         and PivotScope64.xll for 64-bit. Loading the 32-bit one into a 64-bit
+         Excel fails with a misleading message — "le format et l'extension du
+         fichier ne correspondent pas" — that suggests a corrupted
+         file. So only the 64-bit one is generated: a single deliverable, no
+         wrong choice possible.
+         The 64 suffix cannot be removed (the targets treat an empty value
+         as "not set" and reapply their default), and that is just
+         fine: the name tells the bitness. -->
     <ExcelDnaCreate32BitAddIn>false</ExcelDnaCreate32BitAddIn>
 
-    <!-- Livrable autonome. Sans PackNativeLibraryDependencies, le .xll empaqueté
-         ne contient que les assemblies managées : déplacé seul, il plante à la
-         première écriture SQLite (e_sqlite3.dll introuvable). C'est exactement
-         le piège rencontré sur CubeScope, où l'exe déplacé cherchait ses DLL
-         natives à côté de lui. -->
+    <!-- Self-contained deliverable. Without PackNativeLibraryDependencies, the packed .xll
+         only contains the managed assemblies: moved on its own, it crashes on the
+         first SQLite write (e_sqlite3.dll not found). That is exactly
+         the pitfall hit on CubeScope, where the moved exe looked for its native
+         DLLs next to itself. -->
     <ExcelDnaPackNativeLibraryDependencies>true</ExcelDnaPackNativeLibraryDependencies>
     <ExcelDnaPackManagedDependencies>true</ExcelDnaPackManagedDependencies>
   </PropertyGroup>
@@ -44,8 +44,8 @@
     <SpaDist>$(SpaDir)\dist</SpaDist>
   </PropertyGroup>
 
-  <!-- Build de la SPA, incrémental : on ne relance npm que si une source a bougé.
-       -p:SkipSpaBuild=true pour compiler le C# seul (itération rapide). -->
+  <!-- Incremental SPA build: npm is only rerun if a source has changed.
+       -p:SkipSpaBuild=true to compile the C# alone (fast iteration). -->
   <Target Name="BuildSpa"
           BeforeTargets="PrepareForBuild"
           Condition="'$(SkipSpaBuild)' != 'true' AND Exists('$(SpaDir)\node_modules')"
@@ -57,19 +57,19 @@
     <Exec Command="npm run build" WorkingDirectory="$(SpaDir)" />
   </Target>
 
-  <!-- Embarquement de la SPA dans l'assembly : l'add-in n'a alors plus besoin
-       d'aucun fichier sur disque pour servir son interface.
-       Trois pièges MSBuild déjà payés sur CubeScope :
-       (a) hooker PrepareForBuild — à CoreCompile la liste des ressources est
-           déjà figée et l'on embarque zéro fichier, en silence ;
-       (b) passer par un item intermédiaire qualifié : sur un Include
-           auto-référencé, %(Filename) s'évalue vide et tous les LogicalName
-           entrent en collision (CS1508) ;
-       (c) le glob **\*.* et non **\*, qui matche aussi les dossiers ;
-       (d) %(RecursiveDir) rend un séparateur ANTISLASH sous Windows. Sans
-           normalisation, le worker Monaco s'embarque en « spa/assets\x.js »
-           alors que l'URL demande « spa/assets/x.js » : 404 silencieux, et
-           l'éditeur ne démarre pas. -->
+  <!-- Embedding the SPA in the assembly: the add-in then needs no file
+       at all on disk to serve its interface.
+       Three MSBuild pitfalls already paid for on CubeScope:
+       (a) hook PrepareForBuild — at CoreCompile the resource list is
+           already frozen and zero files get embedded, silently;
+       (b) go through a qualified intermediate item: on a self-referencing
+           Include, %(Filename) evaluates to empty and all LogicalNames
+           collide (CS1508);
+       (c) the glob **\*.* and not **\*, which also matches folders;
+       (d) %(RecursiveDir) renders a BACKSLASH separator on Windows. Without
+           normalization, the Monaco worker gets embedded as "spa/assets\x.js"
+           while the URL requests "spa/assets/x.js": silent 404, and
+           the editor does not start. -->
   <Target Name="EmbedSpa" BeforeTargets="PrepareForBuild" DependsOnTargets="BuildSpa">
     <ItemGroup>
       <_SpaFile Include="$(SpaDist)\**\*.*" />
@@ -81,12 +81,12 @@
            Text="La SPA n'est pas construite. Lancez 'npm ci &amp;&amp; npm run build' dans src/PivotScope.Web." />
   </Target>
 
-  <!-- Le paquet WebView2 embarque le contrôle WPF en plus du contrôle WinForms.
-       On n'utilise que WinForms (seul exposable en ActiveX pour un CustomTaskPane),
-       et sa présence provoque un conflit MSB3277 sur WindowsBase 4.0 vs 5.0.
-       On retire la référence inutilisée plutôt que de masquer l'avertissement.
-       Il faut la retirer AVANT ResolveAssemblyReferences : c'est cette
-       cible elle-même qui émet MSB3277, donc la nettoyer après ne sert à rien. -->
+  <!-- The WebView2 package ships the WPF control in addition to the WinForms control.
+       Only WinForms is used (the only one exposable as ActiveX for a CustomTaskPane),
+       and the WPF control's presence causes an MSB3277 conflict on WindowsBase 4.0 vs 5.0.
+       Remove the unused reference rather than hide the warning.
+       It must be removed BEFORE ResolveAssemblyReferences: that very
+       target emits MSB3277, so cleaning it up afterwards is useless. -->
   <Target Name="RemoveUnusedWebView2Wpf" BeforeTargets="ResolveAssemblyReferences">
     <ItemGroup>
       <Reference Remove="@(Reference)"

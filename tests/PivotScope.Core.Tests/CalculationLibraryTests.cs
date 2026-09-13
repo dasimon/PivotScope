@@ -121,6 +121,6 @@ public sealed class CalculationLibraryTests : IDisposable
 
     public void Dispose()
     {
-        try { if (File.Exists(_dbPath)) File.Delete(_dbPath); } catch { /* verrou résiduel */ }
+        try { if (File.Exists(_dbPath)) File.Delete(_dbPath); } catch { /* leftover lock */ }
     }
 }

@@ -4,17 +4,17 @@ using System.Text.Json.Serialization;
 namespace PivotScope.Core.Bridge;
 
 /// <summary>
-/// Routage des messages du volet. Règle absolue : ne jamais laisser échapper une
-/// exception. Toute erreur devient une réponse ok=false portant l'identifiant
-/// d'origine, faute de quoi la promesse correspondante reste pendante côté SPA
-/// et l'interface se fige sans rien afficher.
+/// Routes the task pane's messages. Absolute rule: never let an exception
+/// escape. Every error becomes an ok=false response carrying the original id;
+/// otherwise the matching promise stays pending on the SPA side and the UI
+/// freezes without showing anything.
 /// </summary>
 public sealed class BridgeRouter
 {
     /// <summary>
-    /// Les enums partent en CHAÎNES : par défaut System.Text.Json les rend en
-    /// nombres, et la SPA se retrouverait à comparer 2 à « Measure » — un bug
-    /// qui ne se voit qu'à l'exécution, dans un cas sur trois.
+    /// Enums go out as STRINGS: by default System.Text.Json writes them as
+    /// numbers, and the SPA would end up comparing 2 to "Measure" — a bug that
+    /// only shows at runtime, in one case out of three.
     /// </summary>
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {

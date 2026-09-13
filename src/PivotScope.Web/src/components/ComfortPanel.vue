@@ -24,16 +24,16 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
-/** Seules les hiérarchies posées sur le tableau ont des niveaux affichables. */
+/** Only hierarchies laid out on the table have displayable levels. */
 const laidOutFields = computed(() =>
   props.fields.filter(f => f.area === 'row' || f.area === 'column'),
 )
 
 /**
- * Sélection en attente. On n'applique PAS à chaque case : chaque application
- * reconstruit le tableau, et c'est ce qui rendait la fonction pénible. Comme
- * la boîte de dialogue de l'add-in d'origine, on coche librement puis on
- * applique une seule fois.
+ * Pending selection. We do NOT apply on every checkbox: each application
+ * rebuilds the table, and that is what made the feature tedious. Like
+ * the dialog box of the original add-in, you tick freely and then
+ * apply once.
  */
 const draft = ref<Set<string>>(new Set())
 

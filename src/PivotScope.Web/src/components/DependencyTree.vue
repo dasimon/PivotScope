@@ -1,8 +1,8 @@
 <script setup lang="ts">
-// Composant récursif : un nœud de dépendance et ses enfants.
-// CubeScope coupe déjà les cycles à profondeur 8 côté serveur, on ne re-garde
-// donc pas ici — mais on affiche la nature de chaque nœud, qui dit tout de
-// suite si la piste continue (membre calculé) ou s'arrête (mesure physique).
+// Recursive component: a dependency node and its children.
+// CubeScope already cuts cycles at depth 8 on the server side, so we do not
+// guard again here — but we show the kind of each node, which tells right
+// away whether the trail goes on (calculated member) or stops (physical measure).
 import { useI18n } from 'vue-i18n'
 import type { DependencyNode } from '../types'
 

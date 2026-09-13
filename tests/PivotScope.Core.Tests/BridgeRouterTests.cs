@@ -66,14 +66,14 @@ public class BridgeRouterTests
 
         var json = await router.DispatchAsync("pas du json", CancellationToken.None);
 
-        // Le pont ne doit jamais lever : sinon la promesse côté SPA reste pendante.
+        // The bridge must never throw: otherwise the promise on the SPA side stays pending.
         Assert.Contains("\"ok\":false", json);
     }
 
     [Fact]
     public async Task DispatchAsync_SerialiseLesEnumsEnChaines()
     {
-        // Sinon la SPA compare 2 à « Measure » : un bug invisible au build.
+        // Otherwise the SPA compares 2 to "Measure": a bug invisible at build time.
         var router = new BridgeRouter();
         router.Register("kind", (_, _) =>
             Task.FromResult<object?>(new { kind = PivotScope.Core.Calculations.CalculationKind.Measure }));

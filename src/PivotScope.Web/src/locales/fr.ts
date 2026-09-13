@@ -1,8 +1,8 @@
-// Catalogue de référence. `en.ts` est typé `typeof fr` : toute clé oubliée
-// devient une erreur de compilation, pas un texte vide découvert en production.
+// Reference catalog. `en.ts` is typed `typeof fr`: any forgotten key
+// becomes a compile error, not an empty text discovered in production.
 //
-// Piège vue-i18n : ne JAMAIS écrire « | » dans un message, c'est le séparateur
-// de pluriel — le texte serait coupé en morceaux silencieusement.
+// vue-i18n pitfall: NEVER write `|` in a message, it is the plural separator
+// — the text would be silently cut into pieces.
 export default {
   app: {
     notHosted: "Cette page doit être ouverte depuis le volet PivotScope d'Excel.",

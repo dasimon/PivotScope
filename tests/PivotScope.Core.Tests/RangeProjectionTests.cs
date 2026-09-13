@@ -38,8 +38,8 @@ public class RangeProjectionTests
     [Fact]
     public void ToGrid_ConserveLesNull_PlutotQueDesChainesVides()
     {
-        // Une cellule vide et un zéro ne veulent pas dire la même chose :
-        // écrire "" casserait les formules Excel en aval.
+        // An empty cell and a zero do not mean the same thing:
+        // writing "" would break downstream Excel formulas.
         var grid = RangeProjection.ToGrid(Result(), includeHeaders: false);
 
         Assert.Null(grid[1, 1]);
@@ -69,7 +69,7 @@ public class RangeProjectionTests
     [Fact]
     public void ToGrid_ColonneAbsenteDUneLigne_DonneUneCelluleVide()
     {
-        // Le mapping du CellSet peut ne pas alimenter toutes les colonnes.
+        // The CellSet mapping may not populate every column.
         var partial = new QueryResult(
             [new GridColumn("c0", "A", true), new GridColumn("c1", "B", false)],
             [new Dictionary<string, object?> { ["c0"] = "x" }],

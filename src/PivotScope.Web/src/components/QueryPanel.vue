@@ -69,8 +69,8 @@ defineExpose({
         <button :disabled="busy || !mdx.trim()" @click="run">
           {{ busy ? t('query.running') : t('query.run') }}
         </button>
-        <!-- Arrêter appelle AdomdCommand.Cancel() : le serveur cesse
-             réellement de calculer, on n'abandonne pas juste l'attente. -->
+        <!-- Stop calls AdomdCommand.Cancel(): the server really stops
+             computing, we do not just give up waiting. -->
         <button v-if="busy" class="danger" @click="$emit('cancel')">{{ t('common.stop') }}</button>
         <button v-else class="secondary" @click="template">{{ t('query.template') }}</button>
       </div>

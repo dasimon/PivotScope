@@ -2,16 +2,16 @@ using Microsoft.Data.Sqlite;
 
 namespace PivotScope.Core.Calculations;
 
-/// <summary>Un calcul rangé dans la bibliothèque, avec sa portée et sa date.</summary>
+/// <summary>A calculation stored in the library, with its scope and date.</summary>
 public sealed record StoredCalculation(
     int Id, CalculationDefinition Definition, string? Cube, DateTime SavedUtc);
 
 /// <summary>
-/// Bibliothèque de calculs réutilisables, en SQLite.
+/// Library of reusable calculations, in SQLite.
 ///
-/// Base propre à PivotScope : on ne partage pas celle de CubeScope, parce que
-/// deux process écrivant le même fichier est un problème qu'on n'a aucune
-/// raison de se créer. Un import explicite viendra si le besoin se confirme.
+/// Database owned by PivotScope: CubeScope's is not shared, because two
+/// processes writing the same file is a problem there is no reason to create
+/// for ourselves. An explicit import will come if the need is confirmed.
 /// </summary>
 public sealed class CalculationLibrary : IDisposable
 {
@@ -35,8 +35,8 @@ public sealed class CalculationLibrary : IDisposable
 
     private void Migrate()
     {
-        // Même patron que le StateStore de CubeScope : user_version porte le
-        // numéro de schéma, pour que les migrations futures soient triviales.
+        // Same pattern as CubeScope's StateStore: user_version holds the
+        // schema number, so that future migrations are trivial.
         using var command = _connection.CreateCommand();
         command.CommandText = """
             CREATE TABLE IF NOT EXISTS Calculation (
@@ -52,8 +52,8 @@ public sealed class CalculationLibrary : IDisposable
                 SavedUtc        TEXT    NOT NULL
             );
 
-            -- Un même nom peut exister pour deux cubes différents, mais pas deux
-            -- fois pour le même : réenregistrer met à jour.
+            -- The same name can exist for two different cubes, but not twice
+            -- for the same one: saving again updates it.
             CREATE UNIQUE INDEX IF NOT EXISTS UX_Calculation_Name_Cube
                 ON Calculation (Name, IFNULL(Cube, ''));
             """;
@@ -145,8 +145,8 @@ public sealed class CalculationLibrary : IDisposable
     public void Dispose()
     {
         _connection.Dispose();
-        // Sans ça, le fichier reste verrouillé après Dispose et un test ne peut
-        // pas nettoyer sa base temporaire.
+        // Without this, the file stays locked after Dispose and a test cannot
+        // clean up its temporary database.
         SqliteConnection.ClearPool(_connection);
     }
 }

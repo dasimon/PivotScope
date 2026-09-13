@@ -4,10 +4,10 @@ using PivotScope.Core.Globalization;
 namespace PivotScope.AddIn.Interop;
 
 /// <summary>
-/// Unique point de passage vers COM. Excel est STA sur son thread principal
-/// tandis que les messages WebView2 arrivent sur le thread UI : tout appel COM
-/// fait ailleurs finit en RPC_E_SERVERCALL_RETRYLATER, de façon intermittente et
-/// pénible à reproduire. La bascule de culture est appliquée ici, une fois.
+/// Single gateway to COM. Excel is STA on its main thread while WebView2
+/// messages arrive on the UI thread: any COM call made elsewhere ends in
+/// RPC_E_SERVERCALL_RETRYLATER, intermittently and in a way that is
+/// painful to reproduce. The culture switch is applied here, once.
 /// </summary>
 public static class ExcelThread
 {

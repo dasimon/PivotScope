@@ -4,22 +4,22 @@ using Xl = Microsoft.Office.Interop.Excel;
 
 namespace PivotScope.AddIn.Interop;
 
-/// <summary>Un champ du cube, tel qu'il apparaît dans la liste de champs.</summary>
+/// <summary>A cube field, as it appears in the field list.</summary>
 public sealed record FieldVisibility(
     string Name, string Caption, bool ShownInFieldList, string Area);
 
-/// <summary>Un niveau d'une hiérarchie, et son affichage dans le tableau.</summary>
+/// <summary>A level of a hierarchy, and whether it is shown in the table.</summary>
 public sealed record LevelVisibility(string Name, string Caption, bool Shown);
 
 /// <summary>
-/// Confort de construction du TCD.
+/// PivotTable building conveniences.
 ///
-/// À ne pas confondre avec le menu natif « Afficher/masquer les champs »
-/// d'Excel, qui bascule les PROPRIÉTÉS DE MEMBRE d'un champ donné. Ici on
-/// masque des champs entiers de la LISTE DE CHAMPS, ce qui est le seul moyen
-/// de rendre exploitable un cube qui en expose des centaines.
+/// Not to be confused with Excel's native "Show/hide fields" menu, which
+/// toggles the MEMBER PROPERTIES of a given field. Here we hide whole
+/// fields from the FIELD LIST, which is the only way to make a cube that
+/// exposes hundreds of them usable.
 ///
-/// À appeler exclusivement via <see cref="ExcelThread"/>.
+/// Call exclusively through <see cref="ExcelThread"/>.
 /// </summary>
 public static class PivotComfort
 {
@@ -27,7 +27,7 @@ public static class PivotComfort
     {
         var app = (Xl.Application)ExcelDnaUtil.Application;
         Xl.PivotTable? pivot = null;
-        try { pivot = app.ActiveCell?.PivotTable; } catch { /* hors TCD */ }
+        try { pivot = app.ActiveCell?.PivotTable; } catch { /* outside a PivotTable */ }
 
         return pivot ?? throw new InvalidOperationException(
             "Placez le curseur dans un tableau croisé dynamique.");
@@ -66,8 +66,8 @@ public static class PivotComfort
         {
             if (!string.Equals(cf.Name, cubeFieldName, StringComparison.Ordinal)) continue;
 
-            // Masquer un champ posé sur le TCD le retirerait de la vue sans
-            // que l'utilisateur l'ait demandé : on refuse plutôt que surprendre.
+            // Hiding a field placed on the PivotTable would remove it from view
+            // without the user asking for it: refuse rather than surprise.
             if (!visible && cf.Orientation != Xl.XlPivotFieldOrientation.xlHidden)
                 throw new InvalidOperationException(
                     $"« {cf.Caption} » est utilisé dans le tableau croisé dynamique. " +
@@ -82,9 +82,9 @@ public static class PivotComfort
     }
 
     /// <summary>
-    /// Les niveaux d'une hiérarchie posée sur le tableau. Un CubeField expose
-    /// un PivotField par niveau ; c'est leur propriété Hidden qui décide de
-    /// l'affichage.
+    /// The levels of a hierarchy placed on the table. A CubeField exposes
+    /// one PivotField per level; their Hidden property decides whether
+    /// they are shown.
     /// </summary>
     public static IReadOnlyList<LevelVisibility> ListLevels(string cubeFieldName)
     {
@@ -93,10 +93,10 @@ public static class PivotComfort
 
         foreach (Xl.PivotField pf in field.PivotFields)
         {
-            // CubeField.PivotFields mélange les NIVEAUX et les PROPRIÉTÉS DE
-            // MEMBRE. Sur une hiérarchie réelle, trois niveaux peuvent se
-            // retrouver noyés dans quarante propriétés : c'est IsMemberProperty
-            // qui fait le tri, et sans lui la fonction est inutilisable.
+            // CubeField.PivotFields mixes LEVELS and MEMBER
+            // PROPERTIES. On a real hierarchy, three levels can end up
+            // buried among forty properties: IsMemberProperty does the
+            // sorting, and without it the function is unusable.
             if (IsMemberProperty(pf)) continue;
 
             bool hidden;
@@ -107,7 +107,7 @@ public static class PivotComfort
         return levels;
     }
 
-    /// <summary>Millisecondes écoulées depuis le repère, qu'elle réarme.</summary>
+    /// <summary>Milliseconds elapsed since the marker, which it resets.</summary>
     private static long Since(ref long timestamp)
     {
         var ms = (long)System.Diagnostics.Stopwatch.GetElapsedTime(timestamp).TotalMilliseconds;
@@ -133,11 +133,11 @@ public static class PivotComfort
     }
 
     /// <summary>
-    /// Applique la sélection de niveaux.
+    /// Applies the level selection.
     ///
-    /// **Deux passes, et l'ordre n'est pas cosmétique** : Excel refuse de
-    /// masquer le dernier niveau visible d'une hiérarchie. On affiche donc
-    /// d'abord ce qui doit l'être, on masque seulement ensuite.
+    /// **Two passes, and the order is not cosmetic**: Excel refuses to
+    /// hide the last visible level of a hierarchy. So we first show what
+    /// must be shown, and only then hide.
     /// </summary>
     public static IReadOnlyList<LevelVisibility> SetLevelVisibility(
         string cubeFieldName, IReadOnlyList<string> shownLevelNames)
@@ -152,36 +152,36 @@ public static class PivotComfort
         var field = FindCubeField(pivot, cubeFieldName);
         var wanted = new HashSet<string>(shownLevelNames, StringComparer.Ordinal);
 
-        // Instrumentation. Attention à ce qu'elle mesure vraiment :
-        // PivotTable.MDX décrit la requête du DERNIER rafraîchissement effectué,
-        // et lève dans plusieurs cas documentés. Une comparaison seule ne
-        // distingue donc pas « requête inchangée » de « requête illisible » ni
-        // de « rafraîchissement pas encore fait ». On journalise l'état de
-        // lecture et la durée, sans lesquels la comparaison ne vaut rien.
+        // Instrumentation. Be careful about what it really measures:
+        // PivotTable.MDX describes the query of the LAST refresh performed,
+        // and throws in several documented cases. A comparison alone therefore
+        // does not tell "query unchanged" from "query unreadable" nor
+        // from "refresh not done yet". We log the read state and the
+        // duration, without which the comparison is worthless.
         var mdxBefore = ReadMdx(pivot);
         var started = System.Diagnostics.Stopwatch.GetTimestamp();
 
-        // Sans cette enveloppe, CHAQUE bascule provoque une reconstruction du
-        // tableau et un aller-retour serveur : masquer un niveau sur une
-        // hiérarchie chargée prend alors plusieurs secondes. Différer la mise
-        // en page ramène le tout à une seule reconstruction.
+        // Without this wrapper, EACH toggle triggers a rebuild of the
+        // table and a server round trip: hiding a level on a heavy
+        // hierarchy then takes several seconds. Deferring the layout
+        // brings it all down to a single rebuild.
         var previousManual = false;
-        try { previousManual = pivot.ManualUpdate; } catch { /* non lisible */ }
+        try { previousManual = pivot.ManualUpdate; } catch { /* not readable */ }
 
         app.ScreenUpdating = false;
-        try { pivot.ManualUpdate = true; } catch { /* non modifiable */ }
+        try { pivot.ManualUpdate = true; } catch { /* not settable */ }
 
-        // Chronométrage par étape : sans lui, on sait seulement que « c'est
-        // long », pas laquelle des trois opérations coûte. Mesuré sur un cube
-        // réel, le déploiement des niveaux masqués est le suspect principal —
-        // déplier une hiérarchie de plusieurs milliers de membres peut demander
-        // l'arbre entier au serveur.
+        // Per-step timing: without it, all we know is that "it is
+        // slow", not which of the three operations is costly. Measured on a real
+        // cube, expanding the hidden levels is the main suspect —
+        // expanding a hierarchy of several thousand members can request
+        // the whole tree from the server.
         long showMs = 0, drillMs = 0, hideMs = 0, rebuildMs = 0;
 
         try
         {
-            // Premier passage : afficher. On garantit ainsi qu'au moins un
-            // niveau reste visible avant d'en masquer.
+            // First pass: show. This guarantees that at least one
+            // level stays visible before any is hidden.
             var levels = new List<Xl.PivotField>();
             foreach (Xl.PivotField pf in field.PivotFields)
                 if (!IsMemberProperty(pf)) levels.Add(pf);
@@ -196,26 +196,26 @@ public static class PivotComfort
             }
             showMs = Since(ref step);
 
-            // Les niveaux masqués AU-DESSUS du premier visible doivent être
-            // développés, sinon le tableau reste replié sur eux et le niveau
-            // qu'on voulait voir n'apparaît jamais. Le dernier niveau n'est
-            // jamais développé : il n'a rien en dessous.
+            // Hidden levels ABOVE the first visible one must be
+            // drilled down, otherwise the table stays collapsed on them and the
+            // level we wanted to see never appears. The last level is
+            // never drilled down: there is nothing below it.
             for (var i = 0; i < firstVisible && i < levels.Count - 1; i++)
                 TryDrillDown(levels[i]);
             drillMs = Since(ref step);
 
-            // Second passage : masquer.
+            // Second pass: hide.
             foreach (var pf in levels)
                 if (!wanted.Contains(pf.Name)) TrySetHidden(pf, true);
             hideMs = Since(ref step);
         }
         finally
         {
-            // La reconstruction réelle a lieu ICI, quand on rend la main à
-            // Excel : tout ce qui précède n'empile que des changements en
-            // attente. C'est donc cette ligne-là qui porte le vrai coût.
+            // The actual rebuild happens HERE, when control goes back to
+            // Excel: everything before only stacks up pending
+            // changes. So this very line carries the real cost.
             var rebuild = System.Diagnostics.Stopwatch.GetTimestamp();
-            try { pivot.ManualUpdate = previousManual; } catch { /* non modifiable */ }
+            try { pivot.ManualUpdate = previousManual; } catch { /* not settable */ }
             rebuildMs = Since(ref rebuild);
 
             app.ScreenUpdating = true;
@@ -244,9 +244,9 @@ public static class PivotComfort
     }
 
     /// <summary>
-    /// Lecture instrumentée de PivotTable.MDX : on distingue explicitement
-    /// « illisible » de « vide », sans quoi une comparaison entre deux échecs
-    /// se lirait comme une égalité.
+    /// Instrumented read of PivotTable.MDX: explicitly tells "unreadable"
+    /// apart from "empty", otherwise a comparison between two failures
+    /// would read as equality.
     /// </summary>
     private readonly record struct MdxReading(bool Readable, string Text)
     {
@@ -264,9 +264,9 @@ public static class PivotComfort
     }
 
     /// <summary>
-    /// Applique les changements en attente et interroge le serveur une fois.
-    /// Indispensable quand la mise en page est différée : sinon l'utilisateur
-    /// empile des gestes sans jamais voir le résultat.
+    /// Applies pending changes and queries the server once.
+    /// Essential when the layout is deferred: otherwise the user
+    /// stacks up actions without ever seeing the result.
     /// </summary>
     public static void RefreshNow()
     {
@@ -274,18 +274,18 @@ public static class PivotComfort
         var cache = pivot.PivotCache();
 
         if (!cache.EnableRefresh) cache.EnableRefresh = true;
-        try { pivot.ManualUpdate = false; } catch { /* non modifiable */ }
+        try { pivot.ManualUpdate = false; } catch { /* not settable */ }
 
         pivot.RefreshTable();
     }
 
     /// <summary>
-    /// Mise en page différée : on dépose plusieurs champs, rien n'est envoyé au
-    /// serveur, puis <see cref="RefreshNow"/> applique tout d'un coup.
+    /// Deferred layout: several fields are dropped, nothing is sent to the
+    /// server, then <see cref="RefreshNow"/> applies everything at once.
     ///
-    /// À ne pas confondre avec PivotCache.EnableRefresh, qui INTERDIT
-    /// l'actualisation — bouton d'Excel compris — et laisse l'utilisateur sans
-    /// moyen de voir son tableau.
+    /// Not to be confused with PivotCache.EnableRefresh, which FORBIDS
+    /// refreshing — Excel's button included — and leaves the user with no
+    /// way to see their table.
     /// </summary>
     public static bool SetDeferLayout(bool deferred)
     {
@@ -303,8 +303,8 @@ public static class PivotComfort
         }
         catch (Exception ex)
         {
-            // Excel peut refuser un niveau précis ; on le journalise et on
-            // continue, plutôt que d'abandonner toute la sélection.
+            // Excel may refuse a specific level; log it and
+            // carry on, rather than abandon the whole selection.
             FileLog.Write($"Niveau « {field.Name} » : bascule refusée par Excel.", ex);
         }
     }
@@ -337,21 +337,21 @@ public static class PivotComfort
                 cf.ShowInFieldList = true;
                 restored++;
             }
-            catch { /* champ récalcitrant : on continue, le compte le dira */ }
+            catch { /* stubborn field: carry on, the count will tell */ }
         }
 
         return restored;
     }
 
     /// <summary>
-    /// La mise en page est-elle différée ? Hors TCD on répond « non », qui est
-    /// l'état par défaut d'Excel.
+    /// Is the layout deferred? Outside a PivotTable the answer is "no", which is
+    /// Excel's default state.
     /// </summary>
     public static bool IsLayoutDeferred()
     {
         var app = (Xl.Application)ExcelDnaUtil.Application;
         Xl.PivotTable? pivot = null;
-        try { pivot = app.ActiveCell?.PivotTable; } catch { /* hors TCD */ }
+        try { pivot = app.ActiveCell?.PivotTable; } catch { /* outside a PivotTable */ }
         if (pivot is null) return false;
 
         try { return pivot.ManualUpdate; } catch { return false; }

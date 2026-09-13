@@ -4,9 +4,9 @@ using PivotScope.Core.Adapters;
 namespace PivotScope.AddIn.Interop;
 
 /// <summary>
-/// Garde une session SSAS ouverte par couple serveur/catalogue, dérivée de la
-/// connexion du classeur. Ouverture paresseuse : tant que l'utilisateur ne
-/// demande rien qui touche au cube, aucune connexion n'est établie.
+/// Keeps one SSAS session open per server/catalog pair, derived from the
+/// workbook connection. Lazy opening: as long as the user does not
+/// ask for anything that touches the cube, no connection is made.
 /// </summary>
 public sealed class SessionProvider : IDisposable
 {

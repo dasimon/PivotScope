@@ -38,8 +38,8 @@ button:disabled { opacity: 0.45; cursor: default; }
 button.secondary { background: var(--bg-raised); border: 1px solid var(--border); }
 button.danger { background: #7f1d1d; }
 
-/* Équivalent visuel d'un <label>, sans son comportement de capture du focus :
-   indispensable autour de l'éditeur Monaco. */
+/* Visual equivalent of a <label>, without its focus-capturing behaviour:
+   essential around the Monaco editor. */
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field-label { color: var(--fg-muted); font-size: 12px; }
 

@@ -1,4 +1,4 @@
-/** Miroir des records exposés par PivotScope.Core (sérialisation camelCase). */
+/** Mirror of the records exposed by PivotScope.Core (camelCase serialization). */
 
 export type PivotFieldInfo = {
   caption: string
@@ -67,7 +67,7 @@ export type CellProvenance = {
   expression: string | null
   startLine: number | null
   dependencies: DependencyGraph | null
-  /** Réponse qui n'est pas une erreur : mesure physique, script illisible… */
+  /** Response that is not an error: physical measure, unreadable script… */
   note: string | null
 }
 
@@ -112,7 +112,7 @@ export type FieldVisibility = {
 }
 
 export type QueryRunResult = {
-  /** Vrai si l'utilisateur a arrêté la requête : ce n'est pas une erreur. */
+  /** True if the user stopped the query: this is not an error. */
   cancelled: boolean
   address: string
   rows: number
@@ -123,6 +123,6 @@ export type QueryRunResult = {
 export type FilterListResult = {
   applied: number
   unresolved: string[]
-  /** Libellés portés par plusieurs membres : non résolus volontairement. */
+  /** Captions borne by several members: deliberately left unresolved. */
   ambiguous: string[]
 }

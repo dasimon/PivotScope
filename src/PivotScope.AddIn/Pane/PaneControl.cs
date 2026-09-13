@@ -8,24 +8,24 @@ using PivotScope.AddIn.Diagnostics;
 namespace PivotScope.AddIn.Pane;
 
 /// <summary>
-/// Interface COM par défaut du volet. Volontairement vide : Office instancie le
-/// contrôle d'un CustomTaskPane **par COM**, et sans interface par défaut la
-/// création échoue avec « Impossible de créer le contrôle ActiveX spécifié »
-/// (0x80004005). Elle sert aussi de garde-fou : seul ce qu'elle déclare est
-/// exposé à COM, donc les membres génériques du contrôle ne le sont jamais.
+/// Default COM interface of the task pane. Deliberately empty: Office instantiates the
+/// control of a CustomTaskPane **through COM**, and without a default interface
+/// creation fails with "Impossible de créer le contrôle ActiveX spécifié"
+/// (0x80004005). It also acts as a safeguard: only what it declares is
+/// exposed to COM, so the control's generic members never are.
 /// </summary>
 [ComVisible(true)]
 public interface IPaneControl;
 
 /// <summary>
-/// UserControl WinForms hébergeant WebView2. Le CustomTaskPane d'Office exige un
-/// contrôle exposable en ActiveX : WPF ne l'est pas nativement, WinForms si.
-/// La SPA est servie depuis les ressources embarquées sur une origine virtuelle,
-/// donc sans aucun fichier extrait sur disque.
+/// WinForms UserControl hosting WebView2. Office's CustomTaskPane requires a
+/// control that can be exposed as ActiveX: WPF cannot natively, WinForms can.
+/// The SPA is served from embedded resources on a virtual origin,
+/// so without any file extracted to disk.
 ///
-/// Tous les membres utiles sont internes : ils ne servent qu'à PaneManager et
-/// WebBridge, dans le même assembly, et les garder publics exposerait à COM un
-/// événement générique — que COM ne sait pas représenter.
+/// All useful members are internal: they only serve PaneManager and
+/// WebBridge, in the same assembly, and keeping them public would expose a
+/// generic event to COM — which COM cannot represent.
 /// </summary>
 [ComVisible(true)]
 [ComDefaultInterface(typeof(IPaneControl))]
@@ -46,7 +46,7 @@ public sealed class PaneControl : UserControl, IPaneControl
         ForeColor = System.Drawing.Color.FromArgb(248, 113, 113),
     };
 
-    /// <summary>Message JSON brut envoyé par la SPA.</summary>
+    /// <summary>Raw JSON message sent by the SPA.</summary>
     internal event EventHandler<string>? MessageReceived;
 
     public PaneControl()
@@ -91,7 +91,7 @@ public sealed class PaneControl : UserControl, IPaneControl
         }
     }
 
-    /// <summary>Envoie une réponse JSON à la SPA.</summary>
+    /// <summary>Sends a JSON response to the SPA.</summary>
     internal void PostToWeb(string json)
     {
         try { _web.CoreWebView2?.PostWebMessageAsString(json); }
@@ -117,7 +117,7 @@ public sealed class PaneControl : UserControl, IPaneControl
 
         if (stream is null)
         {
-            // Route cliente inconnue : on rend index.html, comme un serveur SPA.
+            // Unknown client route: serve index.html, like an SPA server.
             stream = OpenResource("index.html");
             if (stream is null)
             {
@@ -133,10 +133,10 @@ public sealed class PaneControl : UserControl, IPaneControl
     }
 
     /// <summary>
-    /// Ouvre une ressource embarquée. On tente aussi la variante à antislash :
-    /// MSBuild rend %(RecursiveDir) avec le séparateur Windows, et un nom
-    /// d'assemblage mal normalisé se traduirait par un 404 muet — l'échec le
-    /// plus pénible à diagnostiquer côté navigateur.
+    /// Opens an embedded resource. The backslash variant is tried too:
+    /// MSBuild renders %(RecursiveDir) with the Windows separator, and a poorly
+    /// normalized manifest name would result in a silent 404 — the failure
+    /// most painful to diagnose on the browser side.
     /// </summary>
     private static Stream? OpenResource(string path)
     {

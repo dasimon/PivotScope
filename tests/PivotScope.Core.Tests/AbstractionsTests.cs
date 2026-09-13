@@ -4,8 +4,8 @@ using PivotScope.Core.Abstractions;
 namespace PivotScope.Core.Tests;
 
 /// <summary>
-/// Prouve que le sous-module CubeScope est bien référencé et que ses types
-/// traversent la frontière d'assembly via nos abstractions.
+/// Proves that the CubeScope submodule is correctly referenced and that its
+/// types cross the assembly boundary through our abstractions.
 /// </summary>
 public class AbstractionsTests
 {

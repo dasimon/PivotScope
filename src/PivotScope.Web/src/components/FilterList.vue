@@ -21,12 +21,12 @@ const level = ref('')
 const keys = ref('')
 const result = ref<FilterListResult | null>(null)
 
-/** Seuls les champs posés sur le TCD peuvent être filtrés. */
+/** Only fields laid out on the PivotTable can be filtered. */
 const filterableFields = computed(() =>
   (props.context?.fields ?? []).filter(f => f.area !== 'data'),
 )
 
-/** Niveaux de la hiérarchie sélectionnée, d'après les métadonnées du cube. */
+/** Levels of the selected hierarchy, according to the cube metadata. */
 const levels = computed(() => {
   if (!props.meta || !cubeField.value) return []
   for (const dimension of props.meta.dimensions) {

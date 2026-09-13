@@ -55,7 +55,7 @@ public class ProvenanceServiceTests
     [Fact]
     public async Task DescribeAsync_MesurePhysique_LeDitSansErreur()
     {
-        // Absente du script : ce n'est pas une panne, c'est la réponse.
+        // Absent from the script: that is not an outage, it is the answer.
         var result = await Service(ScriptWith()).DescribeAsync(
             Cube, "([Measures].[Chiffre d'affaires])");
 
@@ -80,8 +80,8 @@ public class ProvenanceServiceTests
     [Fact]
     public async Task DescribeAsync_ScriptIllisible_RendUneProvenancePartielle()
     {
-        // Le tuple reste affichable même si le script est hors de portée
-        // (droits AMO manquants, par exemple).
+        // The tuple can still be displayed even if the script is out of reach
+        // (missing AMO rights, for example).
         var result = await Service(null, new InvalidOperationException("accès refusé"))
             .DescribeAsync(Cube, "([Measures].[Marge])");
 
@@ -94,7 +94,7 @@ public class ProvenanceServiceTests
     [Fact]
     public async Task DescribeAsync_ToleLAbsenceDuPrefixeMeasures_DansLeScript()
     {
-        // Selon les cubes, la commande peut être nommée avec ou sans préfixe.
+        // Depending on the cube, the command can be named with or without the prefix.
         var script = ScriptWith(new ScriptCommand(
             "CalculatedMember", "[Marge]", "CREATE MEMBER [Marge] AS 1;", 7));
 

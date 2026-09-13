@@ -19,7 +19,7 @@ trim_trailing_whitespace = false
 indent_size = 2
 
 [*.cs]
-# Conventions C# modernes, alignées sur CubeScope.
+# Modern C# conventions, aligned with CubeScope.
 csharp_style_namespace_declarations = file_scoped:warning
 csharp_style_var_for_built_in_types = true:suggestion
 csharp_style_expression_bodied_methods = when_on_single_line:suggestion

@@ -1,13 +1,13 @@
 namespace PivotScope.Core.Models;
 
-/// <summary>Un champ du TCD. Area ∈ row | column | filter | data.</summary>
+/// <summary>A PivotTable field. Area ∈ row | column | filter | data.</summary>
 public sealed record PivotFieldInfo(string Caption, string UniqueName, string Area);
 
 /// <summary>
-/// Photo du tableau croisé dynamique actif, sans aucun type Excel : c'est ce qui
-/// permet de la sérialiser vers la SPA et de la tester hors d'Excel.
-/// Quand HasPivot ou IsOlap est faux, Diagnostic porte le message à afficher —
-/// l'absence de TCD n'est pas une erreur, c'est un état normal du volet.
+/// Snapshot of the active PivotTable, with no Excel type at all: that is what
+/// makes it serializable to the SPA and testable outside Excel.
+/// When HasPivot or IsOlap is false, Diagnostic carries the message to display —
+/// having no PivotTable is not an error, it is a normal state of the task pane.
 /// </summary>
 public sealed record PivotContext(
     bool HasPivot,

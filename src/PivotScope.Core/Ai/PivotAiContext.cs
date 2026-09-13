@@ -4,12 +4,12 @@ using PivotScope.Core.Models;
 namespace PivotScope.Core.Ai;
 
 /// <summary>
-/// Met l'état du tableau croisé dynamique en forme pour le prompt.
+/// Formats the PivotTable state for the prompt.
 ///
-/// C'est le seul contexte que CubeScope ne peut pas fournir, et c'est ce qui
-/// rend l'assistant pertinent ici : savoir quels champs sont en ligne, en
-/// colonne et en filtre change complètement l'explication d'une requête ou le
-/// diagnostic d'une lenteur.
+/// This is the only context CubeScope cannot provide, and it is what makes
+/// the assistant relevant here: knowing which fields are on rows, on columns
+/// and in filters completely changes the explanation of a query or the
+/// diagnosis of a slowdown.
 /// </summary>
 public static class PivotAiContext
 {

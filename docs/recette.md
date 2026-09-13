@@ -1,236 +1,236 @@
-# Recette manuelle
+# Manual acceptance testing
 
-L'interop Excel n'est pas couverte par les tests automatisés — c'est une limite
-assumée, pas un oubli. Cette checklist est le contrepoids : elle se déroule
-**avant chaque tag**, sur un poste avec Excel 64-bit et un cube SSAS
-Multidimensional accessible.
+Excel interop is not covered by the automated tests — this is an accepted
+limitation, not an oversight. This checklist is the counterweight: it is run
+**before each tag**, on a machine with 64-bit Excel and a reachable SSAS
+Multidimensional cube.
 
-Noter la version testée et la date en bas de page.
+Record the tested version and the date at the bottom of the page.
 
-## Préparation
+## Preparation
 
-- [ ] `npm ci && npm run build` dans `src/PivotScope.Web`
+- [ ] `npm ci && npm run build` in `src/PivotScope.Web`
 - [ ] `dotnet build -c Release`
-- [ ] Libérer le `.xll`. Excel est un **processus unique** : un seul classeur
-      encore ouvert, même sans rapport avec PivotScope, suffit à verrouiller
-      `PivotScope64.xll` et les DLL voisines, et le build échoue en
+- [ ] Release the `.xll`. Excel is a **single process**: a single workbook
+      still open, even one unrelated to PivotScope, is enough to lock
+      `PivotScope64.xll` and the neighbouring DLLs, and the build fails with
       `UnauthorizedAccessException`.
-      Deux moyens :
-      - fermer **tous** les classeurs — vérifier avec
-        `tasklist /FI "IMAGENAME eq EXCEL.EXE" /V` qu'aucun processus ne reste ;
-      - ou, sans quitter Excel, **décocher PivotScope** dans Fichier → Options
-        → Compléments → *Gérer : Compléments Excel* → Atteindre. Le fichier est
-        relâché aussitôt. C'est le geste à privilégier en développement.
+      Two ways:
+      - close **all** workbooks — check with
+        `tasklist /FI "IMAGENAME eq EXCEL.EXE" /V` that no process remains;
+      - or, without quitting Excel, **untick PivotScope** in File → Options
+        → Add-ins → *Manage: Excel Add-ins* → Go. The file is
+        released immediately. This is the preferred move during development.
 
-      En cas de doute, MSBuild nomme lui-même le verrou :
-      « Le fichier est verrouillé par : "Microsoft Excel (PID)" ».
-- [ ] Charger `src/PivotScope.AddIn/bin/Release/net10.0-windows/PivotScope64.xll`
-      via Excel → Options → Compléments → *Gérer : Compléments Excel* →
-      Atteindre → Parcourir.
-      **Ne pas** double-cliquer le `.xll` ni passer par Fichier → Ouvrir :
-      Excel le prendrait pour un classeur et afficherait « le format et
-      l'extension du fichier ne correspondent pas ».
+      When in doubt, MSBuild names the lock itself:
+      "The file is locked by: "Microsoft Excel (PID)"".
+- [ ] Load `src/PivotScope.AddIn/bin/Release/net10.0-windows/PivotScope64.xll`
+      via Excel → Options → Add-ins → *Manage: Excel Add-ins* →
+      Go → Browse.
+      **Do not** double-click the `.xll` or go through File → Open:
+      Excel would take it for a workbook and display "the file format and
+      extension don't match".
 
-## Chargement
+## Loading
 
-- [ ] L'onglet de ruban **PivotScope** apparaît
-- [ ] `%LOCALAPPDATA%\PivotScope\logs\pivotscope-<date>.log` contient
-      « PivotScope chargé »
-- [ ] Aucune boîte de dialogue n'est apparue au démarrage
-- [ ] Excel n'a pas rangé le complément dans ses éléments désactivés
-      (Options → Compléments → Gérer : Éléments désactivés)
+- [ ] The **PivotScope** ribbon tab appears
+- [ ] `%LOCALAPPDATA%\PivotScope\logs\pivotscope-<date>.log` contains
+      "PivotScope chargé"
+- [ ] No dialog box appeared at startup
+- [ ] Excel has not put the add-in among its disabled items
+      (Options → Add-ins → Manage: Disabled Items)
 
-## Volet
+## Pane
 
-- [ ] Le bouton « Volet PivotScope » ancre un volet à droite
-- [ ] Le volet affiche l'interface, pas une page blanche ni une erreur WebView2
-- [ ] **Test du focus clavier** (critère GO/NO-GO de la phase 0) : onglet
-      *Filtre*, taper dans la zone de collage — les caractères s'inscrivent.
-      ⚠️ Cette zone n'apparaît **que** si un TCD OLAP est actif : faire d'abord
-      la section « Contexte du TCD » ci-dessous, sinon le volet n'affiche que
-      le message de dégradation et il n'y a rien où taper.
-- [ ] Les touches Ctrl+A, Ctrl+C et Ctrl+V fonctionnent dans cette zone
-- [ ] Le volet se ferme et se rouvre sans erreur
+- [ ] The "Volet PivotScope" button docks a pane on the right
+- [ ] The pane displays the interface, not a blank page or a WebView2 error
+- [ ] **Keyboard focus test** (phase 0 GO/NO-GO criterion): *Filtre*
+      tab, type in the paste area — the characters are entered.
+      ⚠️ This area appears **only** if an OLAP PivotTable is active: first do
+      the "PivotTable context" section below, otherwise the pane only shows
+      the degraded-mode message and there is nowhere to type.
+- [ ] Ctrl+A, Ctrl+C and Ctrl+V work in this area
+- [ ] The pane closes and reopens without error
 
-## Contexte du TCD
+## PivotTable context
 
-- [ ] Curseur **hors** de tout TCD → « Placez le curseur dans un tableau croisé
-      dynamique. » Aucune exception.
-- [ ] Curseur dans un TCD **non-OLAP** (source tableau Excel) → message
-      expliquant que seul SSAS Multidimensional est pris en charge
-- [ ] Curseur dans un TCD OLAP → serveur, catalogue, cube et nombre de champs
-      corrects
-- [ ] « Actualiser » après avoir déposé un champ reflète le changement
+- [ ] Cursor **outside** any PivotTable → "Placez le curseur dans un tableau croisé
+      dynamique." No exception.
+- [ ] Cursor in a **non-OLAP** PivotTable (Excel table source) → message
+      explaining that only SSAS Multidimensional is supported
+- [ ] Cursor in an OLAP PivotTable → correct server, catalog, cube and number
+      of fields
+- [ ] "Actualiser" after dropping a field reflects the change
 
-## MDX généré
+## Generated MDX
 
-- [ ] Le MDX du TCD s'affiche dans l'onglet *Aperçu*
-- [ ] « Copier » place bien la requête dans le presse-papiers
-- [ ] TCD **sans aucune mesure** → message d'invitation, pas d'erreur
-      (`PivotTable.MDX` lève dans ce cas, c'est documenté)
+- [ ] The PivotTable's MDX is displayed in the *Aperçu* tab
+- [ ] "Copier" does put the query on the clipboard
+- [ ] PivotTable **without any measure** → prompt message, no error
+      (`PivotTable.MDX` throws in this case, it is documented)
 
-## Métadonnées
+## Metadata
 
-- [ ] « Charger » remplit l'arbre des dimensions et des mesures
-- [ ] Le filtre textuel réduit l'arbre
-- [ ] Les niveaux d'une hiérarchie sont listés avec leur nom unique
-- [ ] Le premier chargement ouvre la connexion SSAS (visible dans le log), les
-      suivants sont instantanés
+- [ ] "Charger" fills the tree of dimensions and measures
+- [ ] The text filter narrows the tree
+- [ ] The levels of a hierarchy are listed with their unique name
+- [ ] The first load opens the SSAS connection (visible in the log), the
+      following ones are instantaneous
 
-## Filtre par liste
+## Filter by list
 
-- [ ] Sélectionner un champ posé en ligne, puis un niveau
-- [ ] **Sur une hiérarchie à plusieurs niveaux**, filtrer sur un niveau qui
-      n'est **pas** le premier. C'est le cas qui a cassé en recette le
-      2026-07-27 : un CubeField expose un PivotField par niveau, et viser le
-      mauvais fait répondre « Élément introuvable dans le cube OLAP ».
-- [ ] Coller un **libellé** (ex. `Aurore`) dont la clé est différente
-      (ex. `PRD014`) → résolu et appliqué
-- [ ] Coller la **clé** directement → même résultat
-- [ ] Coller **3 valeurs valides + 1 invalide** → le TCD est filtré sur les 3
-      valides, et l'invalide est listée en rouge
-- [ ] Coller des clés séparées par des virgules, des points-virgules et des
-      tabulations → toutes reconnues
-- [ ] Coller une liste avec des doublons → appliquée une seule fois
-- [ ] Coller **uniquement** des clés invalides → message d'erreur clair dans le
-      bandeau, TCD inchangé
-- [ ] Coller une longue liste (> 100 clés) → découpage en lots transparent,
-      résultat complet
+- [ ] Select a field placed on rows, then a level
+- [ ] **On a multi-level hierarchy**, filter on a level that
+      is **not** the first one. This is the case that broke during acceptance
+      testing on 2026-07-27: a CubeField exposes one PivotField per level, and
+      targeting the wrong one answers "The item could not be found in the OLAP cube".
+- [ ] Paste a **caption** (e.g. `Aurore`) whose key is different
+      (e.g. `PRD014`) → resolved and applied
+- [ ] Paste the **key** directly → same result
+- [ ] Paste **3 valid values + 1 invalid** → the PivotTable is filtered on the 3
+      valid ones, and the invalid one is listed in red
+- [ ] Paste keys separated by commas, semicolons and
+      tabs → all recognized
+- [ ] Paste a list with duplicates → applied only once
+- [ ] Paste **only** invalid keys → clear error message in the
+      banner, PivotTable unchanged
+- [ ] Paste a long list (> 100 keys) → transparent splitting into batches,
+      complete result
 
-## Requête MDX libre (phase 2)
+## Free MDX query (phase 2)
 
-- [ ] L'éditeur affiche la coloration MDX
-- [ ] La complétion après `[Measures].` ne propose **que** des mesures, et
-      l'insertion ne duplique pas le préfixe
-- [ ] La complétion après `[Dim].` propose les hiérarchies de cette dimension
-- [ ] La complétion après `[Dim].[Hier].` propose les membres
-- [ ] **F5** et **Ctrl+Entrée** exécutent
-- [ ] Résultat en nouvelle feuille : plage écrite, adresse et durée affichées
-- [ ] Résultat à la cellule active, **curseur hors du TCD** : fonctionne (la
-      connexion est mémorisée, elle n'exige pas un TCD sous le curseur)
-- [ ] Cellule active **dans** un TCD : refusé avec un message explicite
-- [ ] Sans en-têtes : la première ligne contient des données
-- [ ] MDX invalide : bandeau d'erreur portant le message SSAS, rien d'écrit
-- [ ] **Arrêter** sur une requête longue : arrêt effectif, « Requête arrêtée. »
-      en gris et non en bandeau rouge
+- [ ] The editor shows MDX syntax highlighting
+- [ ] Completion after `[Measures].` offers **only** measures, and
+      insertion does not duplicate the prefix
+- [ ] Completion after `[Dim].` offers the hierarchies of that dimension
+- [ ] Completion after `[Dim].[Hier].` offers the members
+- [ ] **F5** and **Ctrl+Enter** run the query
+- [ ] Result in a new sheet: range written, address and duration displayed
+- [ ] Result at the active cell, **cursor outside the PivotTable**: works (the
+      connection is remembered, it does not require a PivotTable under the cursor)
+- [ ] Active cell **inside** a PivotTable: refused with an explicit message
+- [ ] Without headers: the first row contains data
+- [ ] Invalid MDX: error banner carrying the SSAS message, nothing written
+- [ ] **Stop** on a long query: effective stop, "Requête arrêtée."
+      in grey and not in a red banner
 
-## Calculs (phase 2)
+## Calculations (phase 2)
 
-- [ ] Créer une **mesure calculée** simple (`1`) → apparaît dans le TCD
-- [ ] Créer une mesure avec un **dossier d'affichage** → rangée dans ce dossier
-- [ ] Créer un **membre calculé** avec une hiérarchie parente et le format
-      `#,##0.00` → **formaté**, ce qu'aucune interface Excel ne permet
-- [ ] Tenter un format sur une *mesure* → refusé avant d'atteindre Excel
-- [ ] Tenter un dossier sur un *membre* → refusé de même
-- [ ] MDX invalide → message clair, aucun calcul laissé derrière
-- [ ] Recréer un calcul de même nom → remplace au lieu d'échouer
-- [ ] Supprimer un calcul → disparaît du TCD et de la liste
+- [ ] Create a simple **calculated measure** (`1`) → appears in the PivotTable
+- [ ] Create a measure with a **display folder** → placed in that folder
+- [ ] Create a **calculated member** with a parent hierarchy and the format
+      `#,##0.00` → **formatted**, which no Excel interface allows
+- [ ] Try a format on a *measure* → refused before reaching Excel
+- [ ] Try a folder on a *member* → refused likewise
+- [ ] Invalid MDX → clear message, no calculation left behind
+- [ ] Recreate a calculation with the same name → replaces instead of failing
+- [ ] Delete a calculation → disappears from the PivotTable and from the list
 
-## Bibliothèque (phase 2)
+## Library (phase 2)
 
-- [ ] Enregistrer un calcul → apparaît dans la bibliothèque
-- [ ] Réenregistrer le même nom pour le même cube → **mis à jour**, pas dupliqué
-- [ ] « Charger » remplit le formulaire avec tous les champs, format compris
-- [ ] Fermer et rouvrir Excel → la bibliothèque est toujours là
-- [ ] Supprimer une entrée → disparaît
+- [ ] Save a calculation → appears in the library
+- [ ] Save the same name again for the same cube → **updated**, not duplicated
+- [ ] "Charger" fills the form with all the fields, format included
+- [ ] Close and reopen Excel → the library is still there
+- [ ] Delete an entry → disappears
 
-## Construction (phase 2)
+## Building (phase 2)
 
-- [ ] « Charger » liste les champs du cube avec leur état
-- [ ] Décocher un champ **non posé** → il disparaît de la liste de champs d'Excel
-- [ ] Décocher un champ **posé sur le TCD** → refusé avec explication
-- [ ] « Tout réafficher » restaure, le compteur revient à zéro
-- [ ] Couper le rafraîchissement → le bouton du ruban se **relâche**
-- [ ] Le rétablir → le bouton se **renfonce**, un seul aller-retour serveur
+- [ ] "Charger" lists the cube's fields with their state
+- [ ] Untick a field **not placed** → it disappears from Excel's field list
+- [ ] Untick a field **placed on the PivotTable** → refused with an explanation
+- [ ] "Tout réafficher" restores, the counter goes back to zero
+- [ ] Turn off refreshing → the ribbon button is **released**
+- [ ] Turn it back on → the button is **pressed** again, a single server round trip
 
-## Menu contextuel (phase 3)
+## Context menu (phase 3)
 
-- [ ] Clic droit dans un TCD → **trois** entrées PivotScope, pas davantage
-- [ ] « D'où vient ce chiffre ? » ouvre le volet sur le bon onglet
-- [ ] Décharger le complément → les entrées disparaissent du menu
+- [ ] Right-click in a PivotTable → **three** PivotScope entries, no more
+- [ ] "D'où vient ce chiffre ?" opens the pane on the right tab
+- [ ] Unload the add-in → the entries disappear from the menu
 
-## D'où vient ce chiffre (phase 3)
+## Where does this figure come from (phase 3)
 
-- [ ] Sur une **cellule de valeur** → tuple complet affiché, filtres de rapport
-      compris
-- [ ] Sur un **en-tête** ou un **total** → message clair, pas d'exception
-- [ ] Avec un **filtre de rapport en sélection multiple** → message expliquant
-      qu'il faut le réduire à un seul élément
-- [ ] Sur une **mesure physique** → note « mesure physique », pas une erreur
-- [ ] Sur une **mesure calculée** → expression, numéro de ligne dans le script,
-      arbre des dépendances, et la liste « utilisé par »
-- [ ] « Expliquer avec l'IA » bascule sur l'onglet IA avec l'expression remplie
+- [ ] On a **value cell** → full tuple displayed, report filters
+      included
+- [ ] On a **header** or a **total** → clear message, no exception
+- [ ] With a **multi-select report filter** → message explaining
+      that it must be reduced to a single item
+- [ ] On a **physical measure** → "physical measure" note, not an error
+- [ ] On a **calculated measure** → expression, line number in the script,
+      dependency tree, and the "used by" list
+- [ ] "Expliquer avec l'IA" switches to the AI tab with the expression filled in
 
-## Assistant MDX (phase 3)
+## MDX assistant (phase 3)
 
-- [ ] **Sans** `ANTHROPIC_API_KEY` → message clair, boutons désactivés, aucun
-      appel réseau
-- [ ] Avec la clé → les quatre actions répondent
-- [ ] La réponse tient compte du **contexte du tableau** (elle mentionne les
-      champs réellement posés, pas seulement la requête)
-- [ ] « Reprendre la requête du tableau » remplit l'éditeur
-- [ ] **Arrêter** pendant une réponse → interruption propre, pas de bandeau rouge
-- [ ] Une réponse contenant `<script>` ou du HTML s'affiche **en texte**, jamais
-      interprétée
+- [ ] **Without** `ANTHROPIC_API_KEY` → clear message, buttons disabled, no
+      network call
+- [ ] With the key → the four actions respond
+- [ ] The answer takes the **table context** into account (it mentions the
+      fields actually placed, not only the query)
+- [ ] "Reprendre la requête du tableau" fills the editor
+- [ ] **Stop** during an answer → clean interruption, no red banner
+- [ ] An answer containing `<script>` or HTML is displayed **as text**, never
+      interpreted
 
-## Livrable autonome (phase 5)
+## Standalone deliverable (phase 5)
 
-Le test qui décide si PivotScope est distribuable. Il a une histoire : sur
-CubeScope, le premier exe publié était cassé une fois déplacé, et ça ne s'est
-vu qu'au téléchargement.
+The test that decides whether PivotScope can be distributed. It has a history: on
+CubeScope, the first published exe was broken once moved, and this was only
+noticed on download.
 
-- [ ] `pwsh build\pack.ps1` produit `artifacts\PivotScope.zip`
-- [ ] Le dossier contient **4 fichiers utiles** : le `.xll` et trois natives
-      sous `runtimes\win-x64\native\`
-- [ ] Extraire le zip dans un dossier **isolé**, hors du dépôt — typiquement
-      `%USERPROFILE%\Téléchargements\PivotScope`
-- [ ] Charger `PivotScope64.xll` **depuis ce dossier**
-- [ ] Le volet s'ouvre, la SPA s'affiche (assemblies managées bien fusionnées)
-- [ ] **Enregistrer un calcul dans la bibliothèque** : c'est ce geste qui
-      sollicite SQLite, donc `e_sqlite3.dll`. S'il échoue, la native n'est pas
-      résolue depuis cet emplacement.
-- [ ] Fermer Excel, rouvrir, recharger : la bibliothèque a survécu
+- [ ] `pwsh build\pack.ps1` produces `artifacts\PivotScope.zip`
+- [ ] The folder contains **4 useful files**: the `.xll` and three natives
+      under `runtimes\win-x64\native\`
+- [ ] Extract the zip into an **isolated** folder, outside the repository — typically
+      `%USERPROFILE%\Downloads\PivotScope`
+- [ ] Load `PivotScope64.xll` **from this folder**
+- [ ] The pane opens, the SPA displays (managed assemblies properly merged)
+- [ ] **Save a calculation in the library**: this is the action that
+      exercises SQLite, and therefore `e_sqlite3.dll`. If it fails, the native is not
+      resolved from this location.
+- [ ] Close Excel, reopen, reload: the library has survived
 
-## Suivi automatique et navigation (refonte ergonomique)
+## Automatic tracking and navigation (ergonomic redesign)
 
-- [ ] **Le volet suit le TCD sans qu'on le lui demande** : déplacer le curseur
-      d'un TCD à un autre → l'en-tête change seul, sans cliquer « Actualiser »
-- [ ] Déposer un champ sur le TCD → le MDX affiché se met à jour seul
-- [ ] Parcourir rapidement beaucoup de cellules → **un seul** rechargement, pas
-      un par cellule (les notifications sont regroupées)
-- [ ] Changer de classeur → l'en-tête suit
-- [ ] **L'en-tête reste visible depuis les cinq onglets**
-- [ ] Les cinq onglets tiennent dans la largeur du volet, sans troncature
-- [ ] Ouvrir *Tableau* → les champs se chargent seuls
-- [ ] Ouvrir *Calculs* → calculs et bibliothèque se chargent seuls
-- [ ] Ouvrir *Ce chiffre* sur une cellule de valeur → l'analyse se fait seule
-- [ ] Ouvrir *Requête* → l'explorateur de métadonnées est là, replié
-- [ ] Hors TCD, changer d'onglet ne déclenche **aucun** appel serveur
+- [ ] **The pane follows the PivotTable without being asked**: move the cursor
+      from one PivotTable to another → the header changes on its own, without clicking "Actualiser"
+- [ ] Drop a field on the PivotTable → the displayed MDX updates on its own
+- [ ] Move quickly across many cells → **a single** reload, not
+      one per cell (notifications are grouped)
+- [ ] Switch workbooks → the header follows
+- [ ] **The header stays visible from all five tabs**
+- [ ] The five tabs fit in the pane's width, without truncation
+- [ ] Open *Tableau* → the fields load on their own
+- [ ] Open *Calculs* → calculations and library load on their own
+- [ ] Open *Ce chiffre* on a value cell → the analysis runs on its own
+- [ ] Open *Requête* → the metadata explorer is there, collapsed
+- [ ] Outside a PivotTable, switching tabs triggers **no** server call
 
-## Interface bilingue
+## Bilingual interface
 
-- [ ] Le sélecteur **FR / EN** est dans l'en-tête, visible depuis tous les onglets
-- [ ] Basculer en EN traduit **immédiatement** onglets, boutons et messages —
-      sans recharger le volet
-- [ ] Fermer et rouvrir Excel : la langue choisie est **conservée**
-- [ ] Les messages d'erreur venant d'Excel ou de SSAS **restent dans la langue
-      du serveur** — hors de notre contrôle, c'est attendu
-- [ ] En EN, une réponse de l'assistant IA arrive **en anglais**
-- [ ] Le ruban et le menu contextuel suivent la langue d'**Excel**, pas celle du
-      volet : c'est le compromis assumé, le ruban n'est construit qu'une fois
+- [ ] The **FR / EN** selector is in the header, visible from all tabs
+- [ ] Switching to EN **immediately** translates tabs, buttons and messages —
+      without reloading the pane
+- [ ] Close and reopen Excel: the chosen language is **kept**
+- [ ] Error messages coming from Excel or SSAS **stay in the server's
+      language** — out of our control, this is expected
+- [ ] In EN, an answer from the AI assistant arrives **in English**
+- [ ] The ribbon and the context menu follow **Excel**'s language, not the
+      pane's: this is the accepted trade-off, the ribbon is built only once
 
-## Déchargement
+## Unloading
 
-- [ ] Fermer Excel : « PivotScope déchargé » dans le log
-- [ ] Aucun processus `EXCEL.EXE` résiduel
+- [ ] Close Excel: "PivotScope déchargé" in the log
+- [ ] No leftover `EXCEL.EXE` process
 
 ---
 
-| Version testée | Date | Testeur | Résultat |
+| Tested version | Date | Tester | Result |
 |---|---|---|---|
-| 0.1.0 (phases 0-1) | 2026-07-27 | David | ✅ chargement, volet, focus clavier, contexte du TCD, MDX, métadonnées, filtre par libellé — validé sur `SSAS01` / `Analytics` / `Ventes` |
-| 0.2.0 (phase 2) | 2026-07-27 | David | ✅ éditeur Monaco et complétion contextuelle, requête libre → plage (nouvelle feuille et cellule active, avec et sans en-têtes), création d'une mesure calculée affichée dans le TCD |
-| 0.3.0 (phase 3) | 2026-07-28 | David | ✅ provenance d'une cellule, assistant MDX, menu contextuel |
-| 0.3.0 (livrable) | 2026-07-28 | David | ✅ **zip extrait dans un dossier isolé, chargé depuis là : fonctionne** — les assemblies managées sont bien fusionnées et les natives résolues |
-| 0.4.0 | 2026-07-28 | David | ✅ sélecteur de niveaux, suivi automatique du TCD, refonte du volet en cinq onglets, en-tête permanent, icône du ruban |
-| 0.5.0 | 2026-07-29 | David | ✅ interface bilingue FR/EN — bascule immédiate, choix conservé, réponses de l'IA dans la langue courante |
+| 0.1.0 (phases 0-1) | 2026-07-27 | David | ✅ loading, pane, keyboard focus, PivotTable context, MDX, metadata, filter by caption — validated on `SSAS01` / `Analytics` / `Ventes` |
+| 0.2.0 (phase 2) | 2026-07-27 | David | ✅ Monaco editor and contextual completion, free query → range (new sheet and active cell, with and without headers), creation of a calculated measure displayed in the PivotTable |
+| 0.3.0 (phase 3) | 2026-07-28 | David | ✅ provenance of a cell, MDX assistant, context menu |
+| 0.3.0 (deliverable) | 2026-07-28 | David | ✅ **zip extracted into an isolated folder, loaded from there: works** — the managed assemblies are properly merged and the natives resolved |
+| 0.4.0 | 2026-07-28 | David | ✅ level picker, automatic PivotTable tracking, pane redesign into five tabs, permanent header, ribbon icon |
+| 0.5.0 | 2026-07-29 | David | ✅ bilingual FR/EN interface — immediate switch, choice kept, AI answers in the current language |

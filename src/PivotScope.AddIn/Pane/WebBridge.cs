@@ -15,9 +15,9 @@ using PivotScope.Core.Query;
 namespace PivotScope.AddIn.Pane;
 
 /// <summary>
-/// Enregistre les méthodes exposées à la SPA et relaie les réponses.
-/// Répartition stricte : ce qui touche Excel passe par ExcelThread, ce qui
-/// interroge SSAS reste hors du thread UI.
+/// Registers the methods exposed to the SPA and relays the responses.
+/// Strict split: whatever touches Excel goes through ExcelThread, whatever
+/// queries SSAS stays off the UI thread.
 /// </summary>
 internal sealed class WebBridge : IDisposable
 {
@@ -26,30 +26,30 @@ internal sealed class WebBridge : IDisposable
     private readonly SessionProvider _sessions = new();
 
     /// <summary>
-    /// Dernière connexion vue sur un TCD OLAP. La connexion est une donnée de
-    /// session, pas de l'instant : écrire une requête à partir de la cellule
-    /// active suppose justement d'avoir quitté le TCD, et exiger un TCD sous le
-    /// curseur à ce moment-là rendrait la fonction impossible à utiliser.
+    /// Last connection seen on an OLAP PivotTable. The connection is session
+    /// data, not moment-to-moment data: writing a query from the active cell
+    /// precisely means having left the PivotTable, and requiring a PivotTable under the
+    /// cursor at that point would make the feature impossible to use.
     /// </summary>
     private (string Server, string Catalog, string? Cube)? _lastConnection;
 
     /// <summary>
-    /// Requête en vol, s'il y en a une. Annuler le jeton déclenche
-    /// AdomdCommand.Cancel() dans QueryService : le serveur arrête réellement
-    /// de travailler, on n'abandonne pas seulement l'attente.
+    /// Query in flight, if any. Cancelling the token triggers
+    /// AdomdCommand.Cancel() in QueryService: the server really stops
+    /// working, we do not merely give up waiting.
     /// </summary>
     private CancellationTokenSource? _runningQuery;
 
     /// <summary>
-    /// Bibliothèque de calculs, ouverte à la première utilisation seulement :
-    /// le démarrage du complément ne doit toucher ni disque ni réseau.
+    /// Calculation library, opened on first use only:
+    /// add-in startup must touch neither disk nor network.
     /// </summary>
     private readonly Lazy<CalculationLibrary> _library = new(() => new CalculationLibrary());
 
     /// <summary>
-    /// Suit le TCD actif et pousse un événement vers la SPA. Sans lui, le volet
-    /// affiche l'état du dernier clic sur « Actualiser » : potentiellement faux,
-    /// et silencieusement.
+    /// Tracks the active PivotTable and pushes an event to the SPA. Without it, the pane
+    /// shows the state as of the last click on "Actualiser": potentially wrong,
+    /// and silently so.
     /// </summary>
     private readonly PivotWatcher _watcher;
 
@@ -83,8 +83,8 @@ internal sealed class WebBridge : IDisposable
             return await session.GetMembersAsync(cube, hierarchy, ct: ct);
         });
 
-        // La configuration de l'IA ne dépend que de l'environnement
-        // (ANTHROPIC_API_KEY) : pas besoin de cube ni de session pour le dire.
+        // The AI configuration depends only on the environment
+        // (ANTHROPIC_API_KEY): no need for a cube or a session to tell.
         _router.Register("ai.status", (_, _) =>
             Task.FromResult<object?>(new { configured = CubeScopeSession.IsAiConfigured }));
 
@@ -98,8 +98,8 @@ internal sealed class WebBridge : IDisposable
                 : AiAction.Expliquer;
             var mdx = Required(p, "mdx");
 
-            // Le contexte du TCD est ce que CubeScope ne peut pas fournir : sans
-            // lui, l'assistant explique une requête hors sol.
+            // The PivotTable context is what CubeScope cannot provide: without
+            // it, the assistant explains a query out of context.
             var pivotContext = PivotAiContext.Describe(context);
             var prompt = pivotContext.Length > 0 ? $"{pivotContext}\n{mdx}" : mdx;
 
@@ -232,8 +232,8 @@ internal sealed class WebBridge : IDisposable
 
         _router.Register("comfort.autoRefresh", async (_, _) =>
         {
-            // Conservé pour la lecture d'état au chargement du volet : l'écriture
-            // passe désormais par comfort.deferLayout.
+            // Kept for reading the state when the pane loads: writing
+            // now goes through comfort.deferLayout.
             return new { enabled = !await ExcelThread.RunAsync(PivotComfort.IsLayoutDeferred) };
         });
 
@@ -242,15 +242,15 @@ internal sealed class WebBridge : IDisposable
             var running = _runningQuery;
             if (running is null) return Task.FromResult<object?>(new { cancelled = false });
 
-            try { running.Cancel(); } catch (ObjectDisposedException) { /* déjà terminée */ }
+            try { running.Cancel(); } catch (ObjectDisposedException) { /* already finished */ }
             return Task.FromResult<object?>(new { cancelled = true });
         });
 
         _router.Register("query.run", async (p, ct) =>
         {
-            // Une requête libre nomme son cube elle-même, et l'utilisateur doit
-            // pouvoir sortir du TCD pour choisir où écrire : on s'appuie sur la
-            // connexion mémorisée, pas sur le TCD sous le curseur.
+            // A free-form query names its cube itself, and the user must
+            // be able to leave the PivotTable to choose where to write: rely on the
+            // remembered connection, not on the PivotTable under the cursor.
             var (server, catalog, _) = RememberedConnection();
 
             var mdx = Required(p, "mdx");
@@ -281,8 +281,8 @@ internal sealed class WebBridge : IDisposable
             }
             catch (Exception ex) when (cts.IsCancellationRequested)
             {
-                // Une annulation n'est pas une panne : le serveur a été arrêté
-                // à la demande. On le dit calmement plutôt qu'en bandeau rouge.
+                // A cancellation is not a failure: the server was stopped
+                // on request. Say so calmly rather than with a red banner.
                 FileLog.Write($"Requête annulée par l'utilisateur ({ex.GetType().Name}).");
                 return new
                 {
@@ -327,9 +327,9 @@ internal sealed class WebBridge : IDisposable
     internal BridgeRouter Router => _router;
 
     /// <summary>
-    /// Serveur, catalogue et cube : ceux du TCD sous le curseur s'il y en a un,
-    /// sinon ceux de la dernière connexion connue. Ce repli est ce qui permet de
-    /// consulter les métadonnées ou de compléter du MDX en étant sorti du TCD.
+    /// Server, catalog and cube: those of the PivotTable under the cursor if there is one,
+    /// otherwise those of the last known connection. This fallback is what makes it possible
+    /// to browse metadata or complete MDX after leaving the PivotTable.
     /// </summary>
     private (string Server, string Catalog, string Cube) RequireCube(
         PivotContext context, JsonElement? p)
@@ -360,7 +360,7 @@ internal sealed class WebBridge : IDisposable
             "croisé dynamique OLAP pour que PivotScope découvre le serveur et le " +
             "catalogue, puis revenez ici.");
 
-    /// <summary>Lit une définition de calcul depuis les paramètres du pont.</summary>
+    /// <summary>Reads a calculation definition from the bridge parameters.</summary>
     private static CalculationDefinition ReadDefinition(JsonElement? p) => new(
         Required(p, "name"),
         Required(p, "expression"),
@@ -372,7 +372,7 @@ internal sealed class WebBridge : IDisposable
         Blank(Optional(p, "parentHierarchy")),
         OptionalInt(p, "solveOrder") ?? 0);
 
-    /// <summary>Une chaîne vide venue d'un champ de formulaire vaut « non renseigné ».</summary>
+    /// <summary>An empty string from a form field means "not provided".</summary>
     private static string? Blank(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
@@ -422,14 +422,14 @@ internal sealed class WebBridge : IDisposable
         }
         catch (Exception ex)
         {
-            // DispatchAsync ne lève pas ; on couvre ici le relais lui-même.
+            // DispatchAsync does not throw; this covers the relay itself.
             FileLog.Write("Échec de relais d'une réponse vers la SPA.", ex);
         }
     }
 
     /// <summary>
-    /// Notification poussée, sans identifiant de requête : la SPA la reconnaît
-    /// à sa propriété « event » et décide seule quoi recharger.
+    /// Pushed notification, with no request id: the SPA recognizes it
+    /// by its `event` property and decides on its own what to reload.
     /// </summary>
     private void NotifyPivotChanged(bool pivotChanged)
     {

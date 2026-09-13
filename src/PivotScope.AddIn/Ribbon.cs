@@ -9,14 +9,14 @@ using PivotScope.AddIn.Pane;
 namespace PivotScope.AddIn;
 
 /// <summary>
-/// Onglet de ruban. L'add-in d'origine n'en avait aucun : tout passait par un
-/// clic droit, ce qui rend le produit invisible. Point d'entrée assumé ici.
+/// Ribbon tab. The original add-in had none: everything went through a
+/// right-click, which makes the product invisible. Deliberate entry point here.
 ///
-/// <para><b>Piège des imageMso</b> : un identifiant inconnu d'Excel n'émet
-/// aucune erreur — le bouton s'affiche simplement sans icône. Un identifiant
-/// qui n'existe qu'en 16 × 16 fait de même sur un bouton <c>size="large"</c>,
-/// qui réclame une variante 32 × 32. Dans les deux cas l'échec est muet : tout
-/// ajout d'icône se vérifie à l'œil, jamais au compilateur.</para>
+/// <para><b>imageMso pitfall</b>: an id unknown to Excel raises
+/// no error — the button simply shows without an icon. An id
+/// that only exists in 16 × 16 does the same on a <c>size="large"</c> button,
+/// which asks for a 32 × 32 variant. In both cases the failure is silent: any
+/// added icon is checked by eye, never by the compiler.</para>
 /// </summary>
 [ComVisible(true)]
 public class PivotScopeRibbon : ExcelRibbon
@@ -28,10 +28,10 @@ public class PivotScopeRibbon : ExcelRibbon
         string T(string fr, string en) => System.Security.SecurityElement.Escape(
             RibbonText.T(fr, en))!;
 
-        // Le XML est assemblé plutôt qu'écrit d'un bloc : les libellés doivent
-        // suivre la langue d'Excel, et tout texte inséré est échappé — une
-        // apostrophe ou une esperluette non échappée rend le ruban invalide,
-        // et Excel l'ignore alors en silence.
+        // The XML is assembled rather than written in one block: labels must
+        // follow Excel's language, and all inserted text is escaped — an
+        // unescaped apostrophe or ampersand makes the ribbon invalid,
+        // and Excel then silently ignores it.
         return $"""
         <customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui"
                   onLoad="OnLoad" loadImage="LoadImage">
@@ -81,11 +81,11 @@ public class PivotScopeRibbon : ExcelRibbon
     public void OnLoad(IRibbonUI ribbon) => _ribbon = ribbon;
 
     /// <summary>
-    /// Fournit nos propres icônes. Deux tentatives d'<c>imageMso</c> sont
-    /// restées vides sans le moindre message : ces identifiants échouent en
-    /// silence, et un nom valide en 16 × 16 ne rend rien sur un bouton
-    /// <c>size="large"</c>. Dessiner l'icône supprime la devinette — si elle ne
-    /// s'affiche pas, c'est la plomberie qui est en cause, pas un nom.
+    /// Supplies our own icons. Two <c>imageMso</c> attempts stayed
+    /// blank without the slightest message: these ids fail
+    /// silently, and a name valid in 16 × 16 renders nothing on a
+    /// <c>size="large"</c> button. Drawing the icon removes the guesswork — if it does not
+    /// show, the plumbing is at fault, not a name.
     /// </summary>
     public override object LoadImage(string imageId) => imageId switch
     {
@@ -93,7 +93,7 @@ public class PivotScopeRibbon : ExcelRibbon
         _ => base.LoadImage(imageId),
     };
 
-    /// <summary>Deux barres verticales, dans le vert de PivotScope.</summary>
+    /// <summary>Two vertical bars, in PivotScope green.</summary>
     private static Bitmap PauseGlyph()
     {
         var bitmap = new Bitmap(32, 32);
@@ -109,7 +109,7 @@ public class PivotScopeRibbon : ExcelRibbon
         return bitmap;
     }
 
-    /// <summary>Redemande au ruban de relire l'état affiché.</summary>
+    /// <summary>Asks the ribbon to re-read the displayed state.</summary>
     internal static void Invalidate()
     {
         try { _ribbon?.Invalidate(); }
@@ -124,15 +124,15 @@ public class PivotScopeRibbon : ExcelRibbon
         }
         catch (Exception ex)
         {
-            // Jamais de MessageBox : une boîte modale depuis un callback de ruban
-            // bloque Excel. Le volet et le log portent le diagnostic.
+            // Never a MessageBox: a modal dialog from a ribbon callback
+            // blocks Excel. The task pane and the log carry the diagnostic.
             FileLog.Write("Échec à l'ouverture du volet depuis le ruban.", ex);
         }
     }
 
     /// <summary>
-    /// Hors TCD, on affiche « non différé » : c'est l'état par défaut d'Excel,
-    /// et un bouton enfoncé laisserait croire à un réglage en vigueur.
+    /// Outside a PivotTable, show "not deferred": it is Excel's default state,
+    /// and a pressed button would suggest a setting in effect.
     /// </summary>
     public bool GetDeferLayoutPressed(IRibbonControl control)
     {
@@ -147,8 +147,8 @@ public class PivotScopeRibbon : ExcelRibbon
         => Run(() => { PivotComfort.RefreshNow(); return true; }, "actualisation");
 
     /// <summary>
-    /// Exécute une action Excel hors du callback du ruban, puis réinvalide le
-    /// ruban pour que l'état affiché reste celui de la réalité.
+    /// Runs an Excel action outside the ribbon callback, then invalidates the
+    /// ribbon again so the displayed state keeps matching reality.
     /// </summary>
     private static void Run<T>(Func<T> work, string label)
     {
