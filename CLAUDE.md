@@ -129,9 +129,10 @@ code reuse**: PivotScope is MIT-licensed.
 ## Working conventions
 
 - Each phase ends with a binary usable day to day.
-- Interface messages in French, code and symbols in English.
+- Interface messages bilingual (French by default, English), code and symbols
+  in English — see *Bilingual interface* below.
 - Excel interop cannot be tested automatically: the counterpart is
-  [`docs/recette.md`](docs/recette.md), run before each tag.
+  [`docs/acceptance-checklist.md`](docs/acceptance-checklist.md), run before each tag.
 - **When the interop resists, log the actual inventory** (the `CubeFields`,
   the `PivotFields`, their names and types) before throwing. This reflex solved
   three bugs that the documentation alone could not settle.

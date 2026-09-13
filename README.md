@@ -17,8 +17,10 @@ and shares its engine.
 
 ## Status
 
-Early development. Phase 1 (pane, MDX view, metadata explorer, filter by list)
-is the first usable milestone.
+Pre-1.0. Version 0.5.0 covers the pane (MDX view, metadata
+explorer, filter by list), free MDX queries written to a range, calculated
+measures, members and named sets with a reusable library, cell provenance,
+and the MDX assistant — in French or English. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Requirements
 

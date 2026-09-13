@@ -35,7 +35,7 @@ Record the tested version and the date at the bottom of the page.
 
 - [ ] The **PivotScope** ribbon tab appears
 - [ ] `%LOCALAPPDATA%\PivotScope\logs\pivotscope-<date>.log` contains
-      "PivotScope chargé"
+      "PivotScope loaded"
 - [ ] No dialog box appeared at startup
 - [ ] Excel has not put the add-in among its disabled items
       (Options → Add-ins → Manage: Disabled Items)
@@ -221,7 +221,7 @@ noticed on download.
 
 ## Unloading
 
-- [ ] Close Excel: "PivotScope déchargé" in the log
+- [ ] Close Excel: "PivotScope unloaded" in the log
 - [ ] No leftover `EXCEL.EXE` process
 
 ---

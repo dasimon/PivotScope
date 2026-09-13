@@ -80,7 +80,7 @@ that decides whether a build is distributable at all.
 - `external/CubeScope` pinned as a git submodule, isolated from PivotScope's
   build conventions by a stopper `Directory.Build.props`.
 - CI on `windows-latest`: build, unit tests, NuGet and npm vulnerability audits.
-- Manual acceptance checklist in [`docs/recette.md`](docs/recette.md), covering
+- Manual acceptance checklist in [`docs/acceptance-checklist.md`](docs/acceptance-checklist.md), covering
   what automated tests cannot: Excel interop.
 
 ### Added — phase 2
@@ -130,7 +130,7 @@ before rendering.
 ### Verified
 
 Phases 0 and 1 were validated end to end on a real SSAS Multidimensional cube
-on 2026-07-27 — see [`docs/recette.md`](docs/recette.md). The keyboard-focus
+on 2026-07-27 — see [`docs/acceptance-checklist.md`](docs/acceptance-checklist.md). The keyboard-focus
 question that gated the whole architecture (WebView2 inside an Office task
 pane) is answered: it works, and the fallback to a modeless window is not
 needed.
