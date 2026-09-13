@@ -88,7 +88,7 @@ internal sealed class PivotWatcher : IDisposable
     private static void Safe(Action work)
     {
         try { work(); }
-        catch (Exception ex) { FileLog.Write("Suivi du TCD : événement ignoré.", ex); }
+        catch (Exception ex) { FileLog.Write("PivotTable tracking: event ignored.", ex); }
     }
 
     public void Dispose()

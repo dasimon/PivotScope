@@ -38,7 +38,7 @@ public static class ContextMenu
         catch (Exception ex)
         {
             // A missing context menu does not prevent using the ribbon.
-            FileLog.Write("Échec d'installation du menu contextuel.", ex);
+            FileLog.Write("Failed to install the context menu.", ex);
         }
     }
 
@@ -59,7 +59,7 @@ public static class ContextMenu
         }
         catch (Exception ex)
         {
-            FileLog.Write("Échec de nettoyage du menu contextuel.", ex);
+            FileLog.Write("Failed to clean up the context menu.", ex);
         }
     }
 
@@ -76,7 +76,7 @@ public static class ContextMenu
         button.Click += (Office.CommandBarButton _, ref bool _) =>
         {
             try { action(); }
-            catch (Exception ex) { FileLog.Write($"Échec de « {caption} ».", ex); }
+            catch (Exception ex) { FileLog.Write($"'{caption}' failed.", ex); }
         };
     }
 }

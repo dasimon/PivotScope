@@ -37,7 +37,7 @@ internal static class RibbonText
         {
             // Language cannot be determined: stay in French, the language of
             // the author and of daily use.
-            FileLog.Write("Langue d'Excel indéterminable, ruban en français.", ex);
+            FileLog.Write("Could not determine Excel's language, ribbon falls back to French.", ex);
             return true;
         }
     }

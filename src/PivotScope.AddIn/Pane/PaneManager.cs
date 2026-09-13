@@ -25,7 +25,7 @@ internal static class PaneManager
             _control = (PaneControl)_pane.ContentControl;
             _bridge = new WebBridge(_control);
             _ = _control.InitializeAsync();
-            FileLog.Write("Volet créé.");
+            FileLog.Write("Pane created.");
         }
 
         _pane.Visible = true;

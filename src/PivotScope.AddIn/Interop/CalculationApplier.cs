@@ -141,7 +141,7 @@ public static class CalculationApplier
         }
         catch (Exception ex)
         {
-            FileLog.Write("Impossible de rétablir la connexion du cache du TCD.", ex);
+            FileLog.Write("Could not restore the PivotTable cache connection.", ex);
         }
     }
 
@@ -185,7 +185,7 @@ public static class CalculationApplier
         catch (InvalidOperationException) { throw; }
         catch (Exception ex)
         {
-            FileLog.Write("Échec du rafraîchissement après création du calcul.", ex);
+            FileLog.Write("Refresh failed after creating the calculation.", ex);
         }
 
         if (TryAddDataField(pivot, uniqueName, caption)) return;
@@ -198,8 +198,8 @@ public static class CalculationApplier
             inventory.Append($"\n  {cf.Name} | type={cf.CubeFieldType} | sub={cf.CubeFieldSubType}");
 
         FileLog.Write(
-            $"Mesure calculée « {uniqueName} » créée, mais son CubeField est " +
-            $"introuvable. Inventaire :{inventory}");
+            $"Calculated measure '{uniqueName}' created, but its CubeField was " +
+            $"not found. Inventory:{inventory}");
     }
 
     private static bool TryAddDataField(Xl.PivotTable pivot, string uniqueName, string caption)

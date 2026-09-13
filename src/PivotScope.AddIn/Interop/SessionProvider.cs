@@ -27,7 +27,7 @@ public sealed class SessionProvider : IDisposable
             _session?.Dispose();
             _session = null;
 
-            FileLog.Write($"Ouverture d'une session SSAS : {key}");
+            FileLog.Write($"Opening an SSAS session: {key}");
             _session = await CubeScopeSession.ConnectAsync(server, catalog, ct: ct)
                 .ConfigureAwait(false);
             _key = key;

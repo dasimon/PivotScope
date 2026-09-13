@@ -89,8 +89,8 @@ public static class PivotFilterApplier
                              $"| Caption={SafeCaption(pf)}");
 
         FileLog.Write(
-            $"Niveau '{levelUniqueName}' introuvable parmi les PivotFields de " +
-            $"'{field.Name}'. Candidats :{inventory}");
+            $"Level '{levelUniqueName}' not found among the PivotFields of " +
+            $"'{field.Name}'. Candidates:{inventory}");
 
         // A single level: no ambiguity possible, use it.
         if (candidates.Count == 1) return candidates[0];

@@ -119,7 +119,7 @@ internal sealed class WebBridge : IDisposable
             }
             catch (Exception ex) when (cts.IsCancellationRequested)
             {
-                FileLog.Write($"Appel IA annulé ({ex.GetType().Name}).");
+                FileLog.Write($"AI call canceled ({ex.GetType().Name}).");
                 return new { cancelled = true, markdown = string.Empty };
             }
             finally
@@ -283,7 +283,7 @@ internal sealed class WebBridge : IDisposable
             {
                 // A cancellation is not a failure: the server was stopped
                 // on request. Say so calmly rather than with a red banner.
-                FileLog.Write($"Requête annulée par l'utilisateur ({ex.GetType().Name}).");
+                FileLog.Write($"Query canceled by the user ({ex.GetType().Name}).");
                 return new
                 {
                     cancelled = true,
@@ -423,7 +423,7 @@ internal sealed class WebBridge : IDisposable
         catch (Exception ex)
         {
             // DispatchAsync does not throw; this covers the relay itself.
-            FileLog.Write("Échec de relais d'une réponse vers la SPA.", ex);
+            FileLog.Write("Failed to relay a response to the SPA.", ex);
         }
     }
 
@@ -440,7 +440,7 @@ internal sealed class WebBridge : IDisposable
         }
         catch (Exception ex)
         {
-            FileLog.Write("Échec de notification du changement de TCD.", ex);
+            FileLog.Write("Failed to notify the PivotTable change.", ex);
         }
     }
 

@@ -59,7 +59,7 @@
 
   <!-- Embedding the SPA in the assembly: the add-in then needs no file
        at all on disk to serve its interface.
-       Three MSBuild pitfalls already paid for on CubeScope:
+       Four MSBuild pitfalls already paid for on CubeScope:
        (a) hook PrepareForBuild — at CoreCompile the resource list is
            already frozen and zero files get embedded, silently;
        (b) go through a qualified intermediate item: on a self-referencing
@@ -78,7 +78,7 @@
       </EmbeddedResource>
     </ItemGroup>
     <Error Condition="'@(_SpaFile)' == ''"
-           Text="La SPA n'est pas construite. Lancez 'npm ci &amp;&amp; npm run build' dans src/PivotScope.Web." />
+           Text="The SPA is not built. Run 'npm ci &amp;&amp; npm run build' in src/PivotScope.Web." />
   </Target>
 
   <!-- The WebView2 package ships the WPF control in addition to the WinForms control.

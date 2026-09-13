@@ -18,11 +18,11 @@ public sealed class PivotScopeAddIn : IExcelAddIn
             // Windows 95 style — the official Excel-DNA sample does it too.
             System.Windows.Forms.Application.EnableVisualStyles();
             Interop.ContextMenu.Install();
-            FileLog.Write($"PivotScope chargé (Excel {ExcelDnaUtil.ExcelVersion}).");
+            FileLog.Write($"PivotScope loaded (Excel {ExcelDnaUtil.ExcelVersion}).");
         }
         catch (Exception ex)
         {
-            FileLog.Write("Échec au chargement.", ex);
+            FileLog.Write("Load failed.", ex);
         }
     }
 
@@ -31,6 +31,6 @@ public sealed class PivotScopeAddIn : IExcelAddIn
         // CommandBars survive the add-in being unloaded: without this
         // cleanup, Excel keeps dead entries in the context menu.
         Interop.ContextMenu.Remove();
-        FileLog.Write("PivotScope déchargé.");
+        FileLog.Write("PivotScope unloaded.");
     }
 }

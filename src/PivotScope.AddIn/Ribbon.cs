@@ -113,7 +113,7 @@ public class PivotScopeRibbon : ExcelRibbon
     internal static void Invalidate()
     {
         try { _ribbon?.Invalidate(); }
-        catch (Exception ex) { FileLog.Write("Échec d'invalidation du ruban.", ex); }
+        catch (Exception ex) { FileLog.Write("Ribbon invalidation failed.", ex); }
     }
 
     public void OnOpenPane(IRibbonControl control)
@@ -126,7 +126,7 @@ public class PivotScopeRibbon : ExcelRibbon
         {
             // Never a MessageBox: a modal dialog from a ribbon callback
             // blocks Excel. The task pane and the log carry the diagnostic.
-            FileLog.Write("Échec à l'ouverture du volet depuis le ruban.", ex);
+            FileLog.Write("Failed to open the pane from the ribbon.", ex);
         }
     }
 
@@ -141,10 +141,10 @@ public class PivotScopeRibbon : ExcelRibbon
     }
 
     public void OnToggleDeferLayout(IRibbonControl control, bool pressed)
-        => Run(() => PivotComfort.SetDeferLayout(pressed), "bascule de la mise en page différée");
+        => Run(() => PivotComfort.SetDeferLayout(pressed), "deferred layout toggle");
 
     public void OnRefreshNow(IRibbonControl control)
-        => Run(() => { PivotComfort.RefreshNow(); return true; }, "actualisation");
+        => Run(() => { PivotComfort.RefreshNow(); return true; }, "refresh");
 
     /// <summary>
     /// Runs an Excel action outside the ribbon callback, then invalidates the
@@ -154,7 +154,7 @@ public class PivotScopeRibbon : ExcelRibbon
     {
         _ = ExcelThread.RunAsync(work).ContinueWith(task =>
         {
-            if (task.IsFaulted) FileLog.Write($"Échec : {label}.", task.Exception);
+            if (task.IsFaulted) FileLog.Write($"Failed: {label}.", task.Exception);
             Invalidate();
         }, TaskScheduler.Default);
     }

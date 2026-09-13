@@ -80,11 +80,11 @@ public sealed class PaneControl : UserControl, IPaneControl
                 MessageReceived?.Invoke(this, e.TryGetWebMessageAsString() ?? string.Empty);
 
             core.Navigate($"https://{VirtualHost}/index.html");
-            FileLog.Write("Volet initialisé.");
+            FileLog.Write("Pane initialized.");
         }
         catch (Exception ex)
         {
-            FileLog.Write("Échec d'initialisation de WebView2.", ex);
+            FileLog.Write("WebView2 initialization failed.", ex);
             ShowError(
                 "Le volet n'a pas pu démarrer. Vérifiez que le runtime WebView2 " +
                 "est installé. Détail dans %LOCALAPPDATA%\\PivotScope\\logs.");
@@ -95,7 +95,7 @@ public sealed class PaneControl : UserControl, IPaneControl
     internal void PostToWeb(string json)
     {
         try { _web.CoreWebView2?.PostWebMessageAsString(json); }
-        catch (Exception ex) { FileLog.Write("Échec d'envoi vers la SPA.", ex); }
+        catch (Exception ex) { FileLog.Write("Failed to send to the SPA.", ex); }
     }
 
     private void ShowError(string message)

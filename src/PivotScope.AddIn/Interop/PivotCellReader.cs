@@ -49,7 +49,7 @@ public static class PivotCellReader
         }
         catch (Exception ex)
         {
-            FileLog.Write("PivotCell.MDX a échoué.", ex);
+            FileLog.Write("PivotCell.MDX failed.", ex);
             throw new InvalidOperationException(
                 "Excel ne peut pas donner les coordonnées de cette cellule. " +
                 "C'est notamment le cas lorsqu'un filtre de rapport a plusieurs " +

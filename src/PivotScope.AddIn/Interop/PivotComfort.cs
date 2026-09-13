@@ -123,7 +123,7 @@ public static class PivotComfort
         }
         catch (Exception ex)
         {
-            FileLog.Write($"Niveau « {field.Name} » : développement refusé.", ex);
+            FileLog.Write($"Level '{field.Name}': drill-down refused.", ex);
         }
     }
 
@@ -227,18 +227,18 @@ public static class PivotComfort
         var verdict = (mdxBefore.Readable, mdxAfter.Readable) switch
         {
             (false, _) or (_, false) =>
-                "requête MDX ILLISIBLE — la comparaison ne veut rien dire",
-            _ when mdxBefore.Text == mdxAfter.Text => "requête MDX identique",
-            _ => "requête MDX modifiée",
+                "MDX query UNREADABLE — the comparison is meaningless",
+            _ when mdxBefore.Text == mdxAfter.Text => "MDX query unchanged",
+            _ => "MDX query changed",
         };
 
         FileLog.Write(
-            $"Niveaux appliqués en {elapsed:F0} ms — {verdict}. " +
-            $"Détail : afficher {showMs} ms, déplier {drillMs} ms, " +
-            $"masquer {hideMs} ms, reconstruction {rebuildMs} ms.");
+            $"Levels applied in {elapsed:F0} ms — {verdict}. " +
+            $"Breakdown: show {showMs} ms, drill down {drillMs} ms, " +
+            $"hide {hideMs} ms, rebuild {rebuildMs} ms.");
 
         if (mdxBefore.Readable && mdxAfter.Readable && mdxBefore.Text != mdxAfter.Text)
-            FileLog.Write($"  avant : {mdxBefore.Text}\n  après : {mdxAfter.Text}");
+            FileLog.Write($"  before: {mdxBefore.Text}\n  after: {mdxAfter.Text}");
 
         return ListLevels(cubeFieldName);
     }
@@ -250,7 +250,7 @@ public static class PivotComfort
     /// </summary>
     private readonly record struct MdxReading(bool Readable, string Text)
     {
-        public string Describe() => Readable ? $"{Text.Length} car." : "illisible";
+        public string Describe() => Readable ? $"{Text.Length} chars" : "unreadable";
     }
 
     private static MdxReading ReadMdx(Xl.PivotTable pivot)
@@ -258,7 +258,7 @@ public static class PivotComfort
         try { return new MdxReading(true, pivot.MDX ?? string.Empty); }
         catch (Exception ex)
         {
-            FileLog.Write("PivotTable.MDX illisible.", ex);
+            FileLog.Write("PivotTable.MDX unreadable.", ex);
             return new MdxReading(false, string.Empty);
         }
     }
@@ -305,7 +305,7 @@ public static class PivotComfort
         {
             // Excel may refuse a specific level; log it and
             // carry on, rather than abandon the whole selection.
-            FileLog.Write($"Niveau « {field.Name} » : bascule refusée par Excel.", ex);
+            FileLog.Write($"Level '{field.Name}': toggle refused by Excel.", ex);
         }
     }
 

@@ -29,23 +29,23 @@ try {
     # Excel keeps the .xll locked: better to say so right away than to
     # let MSBuild fail with an UnauthorizedAccessException.
     if (Get-Process -Name EXCEL -ErrorAction SilentlyContinue) {
-        throw 'Excel est ouvert et verrouille le .xll. Fermez-le, ou décochez ' +
-              'PivotScope dans Options → Compléments → Atteindre.'
+        throw 'Excel is open and locks the .xll. Close it, or uncheck ' +
+              'PivotScope in Options → Add-ins → Go.'
     }
 
     Write-Host '== SPA ==' -ForegroundColor Cyan
     npm --prefix src/PivotScope.Web ci
     npm --prefix src/PivotScope.Web run build
-    if ($LASTEXITCODE -ne 0) { throw 'Build de la SPA en échec.' }
+    if ($LASTEXITCODE -ne 0) { throw 'SPA build failed.' }
 
     Write-Host '== Add-in ==' -ForegroundColor Cyan
     $versionArg = if ($Version) { "-p:Version=$Version" } else { '' }
     dotnet publish src/PivotScope.AddIn -c $Configuration -p:SkipSpaBuild=true $versionArg
-    if ($LASTEXITCODE -ne 0) { throw 'Publish de l''add-in en échec.' }
+    if ($LASTEXITCODE -ne 0) { throw 'Add-in publish failed.' }
 
     $bin = "src/PivotScope.AddIn/bin/$Configuration/net10.0-windows"
     $packed = Join-Path $bin 'publish/PivotScope64-packed.xll'
-    if (-not (Test-Path $packed)) { throw "Introuvable : $packed" }
+    if (-not (Test-Path $packed)) { throw "Not found: $packed" }
 
     $out = 'artifacts/PivotScope'
     if (Test-Path $out) { Remove-Item $out -Recurse -Force }
@@ -63,17 +63,17 @@ try {
     Compress-Archive -Path "$out/*" -DestinationPath $zip
 
     Write-Host ''
-    Write-Host '== Livrable ==' -ForegroundColor Green
+    Write-Host '== Deliverable ==' -ForegroundColor Green
     Get-ChildItem $out -Recurse -File |
-        Select-Object @{n = 'Fichier'; e = { Resolve-Path -Relative $_.FullName } },
-                      @{n = 'Mo'; e = { [math]::Round($_.Length / 1MB, 2) } } |
+        Select-Object @{n = 'File'; e = { Resolve-Path -Relative $_.FullName } },
+                      @{n = 'MB'; e = { [math]::Round($_.Length / 1MB, 2) } } |
         Format-Table -AutoSize
 
-    Write-Host "Zip : $zip" -ForegroundColor Green
+    Write-Host "Zip: $zip" -ForegroundColor Green
     Write-Host ''
-    Write-Host 'Vérification qui compte : extraire ce zip dans un dossier ISOLÉ' -ForegroundColor Yellow
-    Write-Host '(hors du dépôt) et y charger le .xll. Un livrable qui ne marche' -ForegroundColor Yellow
-    Write-Host 'que depuis bin\ n''est pas un livrable.' -ForegroundColor Yellow
+    Write-Host 'The check that counts: extract this zip into an ISOLATED folder' -ForegroundColor Yellow
+    Write-Host '(outside the repository) and load the .xll from there. A deliverable' -ForegroundColor Yellow
+    Write-Host 'that only works from bin\ is not a deliverable.' -ForegroundColor Yellow
 }
 finally {
     Pop-Location
