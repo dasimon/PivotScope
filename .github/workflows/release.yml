@@ -27,26 +27,26 @@ jobs:
           cache: npm
           cache-dependency-path: src/PivotScope.Web/package-lock.json
 
-      - name: Version depuis le tag
+      - name: Version from tag
         id: version
         shell: pwsh
         run: |
           $v = '${{ github.ref_name }}' -replace '^v', ''
           "value=$v" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      # Les tests doivent passer avant de publier quoi que ce soit : une Release
-      # cassée est plus coûteuse qu'une Release tardive.
+      # Tests must pass before anything is published: a broken release costs
+      # more than a late one.
       - name: Tests
         run: |
           npm --prefix src/PivotScope.Web ci
           npm --prefix src/PivotScope.Web run build
           dotnet test -c Release -p:SkipSpaBuild=true --filter "Category!=Integration"
 
-      - name: Livrable
+      - name: Package
         shell: pwsh
         run: ./build/pack.ps1 -Version ${{ steps.version.outputs.value }}
 
-      - name: Release GitHub
+      - name: GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/PivotScope.zip
@@ -54,17 +54,17 @@ jobs:
           body: |
             ## Installation
 
-            Dézipper où vous voulez, puis dans Excel :
-            **Fichier → Options → Compléments → _Gérer : Compléments Excel_ →
-            Atteindre → Parcourir**, et choisir `PivotScope64.xll`.
+            Unzip anywhere, then in Excel:
+            **File → Options → Add-ins → Manage: _Excel Add-ins_ →
+            Go → Browse**, and pick `PivotScope64.xll`.
 
-            Ne pas double-cliquer le `.xll` : Excel le prendrait pour un
-            classeur et signalerait à tort un fichier endommagé.
+            Do not double-click the `.xll`: Excel would treat it as a
+            workbook and wrongly report a corrupted file.
 
-            ### Prérequis
+            ### Requirements
 
-            - Excel **64 bits** 2016 ou plus récent
+            - Excel **64-bit**, 2016 or later
             - [.NET Desktop Runtime 10](https://dotnet.microsoft.com/download/dotnet/10.0) (x64)
-            - WebView2 Evergreen (présent par défaut sur Windows 11)
-            - Un cube **SSAS Multidimensional** accessible
-            - Facultatif : `ANTHROPIC_API_KEY` pour l'assistant MDX
+            - WebView2 Evergreen (installed by default on Windows 11)
+            - A reachable **SSAS Multidimensional** cube
+            - Optional: `ANTHROPIC_API_KEY` for the MDX assistant
