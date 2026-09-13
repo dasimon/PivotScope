@@ -18,8 +18,7 @@ and shares its engine.
 ## Status
 
 Early development. Phase 1 (pane, MDX view, metadata explorer, filter by list)
-is the first usable milestone. See
-[the design spec](docs/superpowers/specs/2026-07-26-pivotscope-design.md).
+is the first usable milestone.
 
 ## Requirements
 
