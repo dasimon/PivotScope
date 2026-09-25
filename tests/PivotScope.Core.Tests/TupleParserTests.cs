@@ -76,6 +76,23 @@ public class TupleParserTests
     }
 
     [Fact]
+    public void Parse_CrochetEchappeDansUnLibelle_NeFaussePasLeDecoupage()
+    {
+        var tuple = TupleParser.Parse("([Measures].[Taux]]x],[Devise].[Devise].&[EUR])");
+
+        Assert.Equal("[Measures].[Taux]]x]", tuple.Measure);
+        Assert.Equal(["[Devise].[Devise].&[EUR]"], tuple.Coordinates);
+    }
+
+    [Fact]
+    public void Parse_CrochetOuvrantDansUnLibelle_EstDuTexte()
+    {
+        var tuple = TupleParser.Parse("([Measures].[VL],[Fonds].[Fonds].&[A[1]], B])");
+
+        Assert.Equal(["[Fonds].[Fonds].&[A[1]], B]"], tuple.Coordinates);
+    }
+
+    [Fact]
     public void Parse_MesurePasEnPremierePosition_EstQuandMemeReconnue()
     {
         var tuple = TupleParser.Parse(

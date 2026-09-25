@@ -15,16 +15,18 @@ public sealed record StoredCalculation(
 /// </summary>
 public sealed class CalculationLibrary : IDisposable
 {
-    private const int SchemaVersion = 1;
+    private const int SchemaVersion = 2;
 
     private readonly SqliteConnection _connection;
 
     public CalculationLibrary(string? dbPath = null)
     {
-        var path = dbPath ?? DefaultDbPath;
+        var path = Path.GetFullPath(dbPath ?? DefaultDbPath);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 
-        _connection = new SqliteConnection($"Data Source={path}");
+        // Built, not concatenated: a ";" in the path would break the string.
+        _connection = new SqliteConnection(
+            new SqliteConnectionStringBuilder { DataSource = path }.ToString());
         _connection.Open();
         Migrate();
     }
@@ -33,12 +35,29 @@ public sealed class CalculationLibrary : IDisposable
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "PivotScope", "calculations.db");
 
+    /// <summary>
+    /// Same pattern as CubeScope's StateStore: user_version holds the schema
+    /// number. v2 widens the identity of a calculation from (name, cube) to
+    /// (name, cube, kind, parent hierarchy): the member "Total" under [Fonds]
+    /// no longer overwrites the member "Total" under [Devise]. Widening a key
+    /// can never make existing rows collide, so no row is lost.
+    /// </summary>
     private void Migrate()
     {
-        // Same pattern as CubeScope's StateStore: user_version holds the
-        // schema number, so that future migrations are trivial.
+        using var read = _connection.CreateCommand();
+        read.CommandText = "PRAGMA user_version;";
+        var current = Convert.ToInt32(read.ExecuteScalar());
+
+        // An older binary must not "migrate" a newer database backwards.
+        if (current > SchemaVersion)
+            throw new InvalidOperationException(
+                $"La bibliothèque de calculs a été créée par une version plus récente de " +
+                $"PivotScope (schéma {current}, attendu {SchemaVersion}). Mettez PivotScope à jour.");
+
+        using var transaction = _connection.BeginTransaction();
         using var command = _connection.CreateCommand();
-        command.CommandText = """
+        command.Transaction = transaction;
+        command.CommandText = $"""
             CREATE TABLE IF NOT EXISTS Calculation (
                 Id              INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name            TEXT    NOT NULL,
@@ -52,16 +71,17 @@ public sealed class CalculationLibrary : IDisposable
                 SavedUtc        TEXT    NOT NULL
             );
 
-            -- The same name can exist for two different cubes, but not twice
-            -- for the same one: saving again updates it.
-            CREATE UNIQUE INDEX IF NOT EXISTS UX_Calculation_Name_Cube
-                ON Calculation (Name, IFNULL(Cube, ''));
+            DROP INDEX IF EXISTS UX_Calculation_Name_Cube;
+
+            -- Saving the same calculation again updates it; two calculations
+            -- that only share a name are two entries.
+            CREATE UNIQUE INDEX IF NOT EXISTS UX_Calculation_Identity
+                ON Calculation (Name, IFNULL(Cube, ''), Kind, IFNULL(ParentHierarchy, ''));
+
+            PRAGMA user_version = {SchemaVersion};
             """;
         command.ExecuteNonQuery();
-
-        using var version = _connection.CreateCommand();
-        version.CommandText = $"PRAGMA user_version = {SchemaVersion};";
-        version.ExecuteNonQuery();
+        transaction.Commit();
     }
 
     public async Task<int> SaveAsync(
@@ -75,12 +95,10 @@ public sealed class CalculationLibrary : IDisposable
             VALUES
                 ($name, $expression, $kind, $folder, $format,
                  $parent, $solveOrder, $cube, $savedUtc)
-            ON CONFLICT (Name, IFNULL(Cube, '')) DO UPDATE SET
+            ON CONFLICT (Name, IFNULL(Cube, ''), Kind, IFNULL(ParentHierarchy, '')) DO UPDATE SET
                 Expression      = excluded.Expression,
-                Kind            = excluded.Kind,
                 DisplayFolder   = excluded.DisplayFolder,
                 NumberFormat    = excluded.NumberFormat,
-                ParentHierarchy = excluded.ParentHierarchy,
                 SolveOrder      = excluded.SolveOrder,
                 SavedUtc        = excluded.SavedUtc
             RETURNING Id;

@@ -67,6 +67,49 @@ public class RangeProjectionTests
     }
 
     [Fact]
+    public void ToGrid_ConvertitTousLesNombresEnDouble()
+    {
+        var mixed = new QueryResult(
+            [new GridColumn("a", "A", false), new GridColumn("b", "B", false), new GridColumn("c", "C", false)],
+            [new Dictionary<string, object?> { ["a"] = 1234.56m, ["b"] = 42, ["c"] = 7L }],
+            3, 1, 0);
+
+        var grid = RangeProjection.ToGrid(mixed, includeHeaders: false);
+
+        Assert.Equal(1234.56d, grid[0, 0]);
+        Assert.Equal(42d, grid[0, 1]);
+        Assert.Equal(7d, grid[0, 2]);
+    }
+
+    [Fact]
+    public void ToGrid_CelluleEnErreur_ResteUneErreur_PasDuTexte()
+    {
+        var withErrors = new QueryResult(
+            [new GridColumn("a", "A", false), new GridColumn("b", "B", false)],
+            [new Dictionary<string, object?> { ["a"] = "#ERREUR", ["b"] = new CellError("division") }],
+            2, 1, 0);
+
+        var grid = RangeProjection.ToGrid(withErrors, includeHeaders: false);
+
+        Assert.IsType<CellError>(grid[0, 0]);
+        Assert.Equal(new CellError("division"), grid[0, 1]);
+    }
+
+    [Fact]
+    public void ToGrid_TropDeColonnesPourUneFeuille_EchoueAvantDAllouer()
+    {
+        var columns = Enumerable.Range(0, RangeProjection.MaxColumns + 1)
+            .Select(i => new GridColumn($"c{i}", $"C{i}", false))
+            .ToList();
+        var wide = new QueryResult(columns, [], 0, 1, 0);
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => RangeProjection.ToGrid(wide, includeHeaders: true));
+
+        Assert.Contains("16", ex.Message);
+    }
+
+    [Fact]
     public void ToGrid_ColonneAbsenteDUneLigne_DonneUneCelluleVide()
     {
         // The CellSet mapping may not populate every column.

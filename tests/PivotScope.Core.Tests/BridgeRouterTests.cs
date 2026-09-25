@@ -84,6 +84,40 @@ public class BridgeRouterTests
     }
 
     [Fact]
+    public async Task DispatchAsync_IdNumerique_EstRenvoyeTelQuel()
+    {
+        var router = new BridgeRouter();
+        router.Register("ping", (_, _) => Task.FromResult<object?>(true));
+
+        var json = await router.DispatchAsync("""{"id":7,"method":"ping"}""", CancellationToken.None);
+
+        Assert.Contains("\"id\":\"7\"", json);
+        Assert.Contains("\"ok\":true", json);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_MethodeAbsente_GardeLId()
+    {
+        var router = new BridgeRouter();
+
+        var json = await router.DispatchAsync("""{"id":"9"}""", CancellationToken.None);
+
+        Assert.Contains("\"id\":\"9\"", json);
+        Assert.Contains("\"ok\":false", json);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_DescribeError_TraduitLErreur()
+    {
+        var router = new BridgeRouter { DescribeError = _ => "feuille protégée" };
+        router.Register("boom", (_, _) => throw new InvalidOperationException("0x800A03EC"));
+
+        var json = await router.DispatchAsync("""{"id":"1","method":"boom"}""", CancellationToken.None);
+
+        Assert.Contains("feuille prot", json);
+    }
+
+    [Fact]
     public async Task Register_SameMethodTwice_LastHandlerWins()
     {
         var router = new BridgeRouter();

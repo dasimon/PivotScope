@@ -39,21 +39,33 @@ public static class TupleParser
         return new MdxTuple(measure, coordinates);
     }
 
+    /// <summary>
+    /// Splits on commas outside identifiers. Inside brackets, "]]" is an
+    /// escaped bracket and "[" is plain text: counting brackets as a depth
+    /// would go negative on "[Taux]]x]" and stop splitting altogether.
+    /// </summary>
     private static IEnumerable<string> SplitTopLevel(string text)
     {
-        var depth = 0;
+        var inIdentifier = false;
         var start = 0;
 
         for (var i = 0; i < text.Length; i++)
         {
-            switch (text[i])
+            var ch = text[i];
+            if (inIdentifier)
             {
-                case '[': depth++; break;
-                case ']': depth--; break;
-                case ',' when depth == 0:
-                    yield return text[start..i];
-                    start = i + 1;
-                    break;
+                if (ch != ']') continue;
+                if (i + 1 < text.Length && text[i + 1] == ']') { i++; continue; }
+                inIdentifier = false;
+            }
+            else if (ch == '[')
+            {
+                inIdentifier = true;
+            }
+            else if (ch == ',')
+            {
+                yield return text[start..i];
+                start = i + 1;
             }
         }
 

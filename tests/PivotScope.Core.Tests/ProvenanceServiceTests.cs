@@ -105,6 +105,53 @@ public class ProvenanceServiceTests
     }
 
     [Fact]
+    public async Task DescribeAsync_MesureModifieeParUnScope_LeSignale()
+    {
+        // No CREATE MEMBER, but a SCOPE assignment changes the figure:
+        // "comes straight from the cube" alone would be a wrong answer.
+        var script = ScriptWith(new ScriptCommand(
+            "Scope", "SCOPE([Measures].[VL]);",
+            "SCOPE([Measures].[VL]); THIS = [Measures].[VL] * 2; END SCOPE;", 120));
+
+        var result = await Service(script).DescribeAsync(Cube, "([Measures].[VL])");
+
+        Assert.Null(result.Expression);
+        Assert.Contains("SCOPE", result.Note);
+        Assert.Contains("ligne 120", result.Note);
+    }
+
+    [Fact]
+    public async Task DescribeAsync_CoordonneeCalculee_EstSignalee()
+    {
+        var script = ScriptWith(new ScriptCommand(
+            "CalculatedMember", "[Temps].[Calcul].[YTD]",
+            "CREATE MEMBER [Temps].[Calcul].[YTD] AS Aggregate(YTD());", 30));
+
+        var result = await Service(script).DescribeAsync(
+            Cube, "([Measures].[VL],[Temps].[Calcul].[YTD])");
+
+        Assert.Contains("[Temps].[Calcul].[YTD]", result.Note);
+    }
+
+    [Fact]
+    public async Task DescribeAsync_EnsembleDuMemeNom_NEstPasLaDefinitionDeLaMesure()
+    {
+        var script = ScriptWith(new ScriptCommand(
+            "NamedSet", "[Marge]", "CREATE SET [Marge] AS {};", 3));
+
+        var result = await Service(script).DescribeAsync(Cube, "([Measures].[Marge])");
+
+        Assert.Null(result.Expression);
+    }
+
+    [Fact]
+    public async Task DescribeAsync_Annulation_NEstPasTransformeeEnNote()
+    {
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            Service(null, new OperationCanceledException()).DescribeAsync(Cube, "([Measures].[Marge])"));
+    }
+
+    [Fact]
     public async Task DescribeAsync_ConserveLeTupleBrut()
     {
         const string tuple = "([Measures].[Marge],[Devise].[Devise].&[EUR])";

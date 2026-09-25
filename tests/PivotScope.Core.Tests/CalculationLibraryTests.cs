@@ -119,6 +119,66 @@ public sealed class CalculationLibraryTests : IDisposable
         Assert.Single(await second.ListAsync());
     }
 
+    [Fact]
+    public async Task SaveAsync_MemeNomAutreHierarchie_NEcrasePas()
+    {
+        using var library = Library();
+        CalculationDefinition Total(string parent) => new(
+            "Total", "1", CalculationKind.Member, ParentHierarchy: parent);
+
+        await library.SaveAsync(Total("[Fonds].[Fonds]"), "Ventes");
+        await library.SaveAsync(Total("[Devise].[Devise]"), "Ventes");
+
+        Assert.Equal(2, (await library.ListAsync()).Count);
+    }
+
+    [Fact]
+    public async Task Migration_DepuisLaV1_ConserveLesCalculs()
+    {
+        // A v1 database as the previous release left it.
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={_dbPath}"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                CREATE TABLE Calculation (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL,
+                    Expression TEXT NOT NULL, Kind INTEGER NOT NULL, DisplayFolder TEXT NULL,
+                    NumberFormat TEXT NULL, ParentHierarchy TEXT NULL,
+                    SolveOrder INTEGER NOT NULL DEFAULT 0, Cube TEXT NULL, SavedUtc TEXT NOT NULL);
+                CREATE UNIQUE INDEX UX_Calculation_Name_Cube ON Calculation (Name, IFNULL(Cube, ''));
+                INSERT INTO Calculation (Name, Expression, Kind, Cube, SavedUtc)
+                    VALUES ('Marge', '1', 2, 'Ventes', '2026-07-27T00:00:00.0000000Z');
+                PRAGMA user_version = 1;
+                """;
+            command.ExecuteNonQuery();
+        }
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+
+        using var library = Library();
+        await library.SaveAsync(Marge() with { Expression = "2" }, "Ventes");
+
+        var stored = Assert.Single(await library.ListAsync());
+        Assert.Equal("2", stored.Definition.Expression);
+    }
+
+    [Fact]
+    public void Ouverture_DUneBasePlusRecente_EstRefusee()
+    {
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={_dbPath}"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA user_version = 99;";
+            command.ExecuteNonQuery();
+        }
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+
+        var ex = Assert.Throws<InvalidOperationException>(() => Library());
+
+        Assert.Contains("plus récente", ex.Message);
+    }
+
     public void Dispose()
     {
         try { if (File.Exists(_dbPath)) File.Delete(_dbPath); } catch { /* leftover lock */ }

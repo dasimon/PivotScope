@@ -98,8 +98,43 @@ public class CalculationValidatorTests
             CalculationValidator.QualifiedName(member));
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("[Devise].[Devise]")]
+    public void QualifiedName_UnEnsembleNaPasDeParent(string? leftoverParent)
+    {
+        var set = new CalculationDefinition(
+            "Top10", "TopCount([Fonds].[Fonds].Members, 10)", CalculationKind.Set,
+            ParentHierarchy: leftoverParent);
+
+        Assert.Equal("[Top10]", CalculationValidator.QualifiedName(set));
+    }
+
     [Fact]
     public void QualifiedName_ElagueLeNom()
         => Assert.Equal("[Measures].[Marge]",
             CalculationValidator.QualifiedName(Measure("  Marge  ")));
+}
+
+public class CalculationNumberFormatTests
+{
+    // XlCalcMemNumberFormatType: Default = 0, Number = 1, Percent = 2
+    // (learn.microsoft.com/office/vba/api/excel.xlcalcmemnumberformattype).
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("", null)]
+    [InlineData("default", null)]
+    [InlineData("number", 1)]
+    [InlineData("percent", 2)]
+    [InlineData("0.00%", 2)]       // free text saved by earlier releases
+    [InlineData("#,##0.00", 1)]
+    public void ToExcel_RendLaValeurDeLEnumeration(string? format, int? expected)
+        => Assert.Equal(expected, CalculationNumberFormat.ToExcel(format));
+
+    [Theory]
+    [InlineData(0, null)]
+    [InlineData(1, "number")]
+    [InlineData(2, "percent")]
+    public void FromExcel_RendLeMotCle(int value, string? expected)
+        => Assert.Equal(expected, CalculationNumberFormat.FromExcel(value));
 }

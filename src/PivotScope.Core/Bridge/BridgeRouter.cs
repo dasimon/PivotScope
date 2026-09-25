@@ -24,28 +24,62 @@ public sealed class BridgeRouter
     private readonly Dictionary<string, Func<JsonElement?, CancellationToken, Task<object?>>> _handlers =
         new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Turns an exception into the text shown in the pane. The host plugs in
+    /// what Core cannot know — a raw COM HRESULT ("0x800A03EC") means nothing
+    /// to the user, "the sheet is protected" does.
+    /// </summary>
+    public Func<Exception, string> DescribeError { get; set; } = ex => ex.Message;
+
     public void Register(string method, Func<JsonElement?, CancellationToken, Task<object?>> handler)
         => _handlers[method] = handler;
 
     public async Task<string> DispatchAsync(string requestJson, CancellationToken ct)
     {
+        // The id is read first and leniently (string or number): if anything
+        // else in the message is wrong, the error must still reach the promise
+        // that waits for it.
         var id = "0";
         try
         {
-            var request = JsonSerializer.Deserialize<BridgeRequest>(requestJson, Json)
-                          ?? throw new InvalidOperationException("Message vide.");
-            id = request.Id;
+            string? method;
+            JsonElement? parameters = null;
 
-            if (!_handlers.TryGetValue(request.Method, out var handler))
+            using (var document = JsonDocument.Parse(requestJson))
+            {
+                var root = document.RootElement;
+                if (root.ValueKind != JsonValueKind.Object)
+                    throw new InvalidOperationException("Message invalide.");
+
+                if (root.TryGetProperty("id", out var idElement))
+                    id = idElement.ValueKind switch
+                    {
+                        JsonValueKind.String => idElement.GetString() ?? "0",
+                        JsonValueKind.Number => idElement.GetRawText(),
+                        _ => "0",
+                    };
+
+                method = root.TryGetProperty("method", out var m) && m.ValueKind == JsonValueKind.String
+                    ? m.GetString()
+                    : null;
+
+                // Cloned: the element must outlive the document.
+                if (root.TryGetProperty("params", out var p) && p.ValueKind != JsonValueKind.Null)
+                    parameters = p.Clone();
+            }
+
+            if (method is null || !_handlers.TryGetValue(method, out var handler))
                 return Serialize(new BridgeResponse(id, false, null,
-                    $"Méthode inconnue : {request.Method}"));
+                    $"Méthode inconnue : {method}"));
 
-            var result = await handler(request.Params, ct).ConfigureAwait(false);
+            var result = await handler(parameters, ct).ConfigureAwait(false);
             return Serialize(new BridgeResponse(id, true, result, null));
         }
         catch (Exception ex)
         {
-            return Serialize(new BridgeResponse(id, false, null, ex.Message));
+            string message;
+            try { message = DescribeError(ex); } catch { message = ex.Message; }
+            return Serialize(new BridgeResponse(id, false, null, message));
         }
     }
 

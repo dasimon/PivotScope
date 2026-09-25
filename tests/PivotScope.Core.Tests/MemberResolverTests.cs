@@ -170,8 +170,8 @@ public class MemberResolverTests
 
         var result = await resolver.ResolveAsync("C", Level, keys);
 
-        // 250 keys > batch size: several queries, no key lost.
-        Assert.True(exec.Queries.Count > 1);
+        // 250 keys, batches of 100: exactly three queries, no key lost.
+        Assert.Equal(3, exec.Queries.Count);
         Assert.Equal(250, result.UniqueNames.Count);
         Assert.Empty(result.Unresolved);
     }
@@ -271,29 +271,166 @@ public class MemberResolverTests
     [Fact]
     public async Task ResolveAsync_EchecDeLEnumeration_NEffacePasCeQuiEstDejaResolu()
     {
-        var exec = new FakeExecutor { Responder = (mdx, _) => mdx.Contains("&[EUR]")
-            ? Captions("Euro")
-            : Captions((string?)null) };
+        // EUR is found by key, Aurore is not: the level enumeration IS attempted
+        // (and fails), which is the case this test is about.
+        var exec = new FakeExecutor { Responder = (_, _) => Captions("Euro", null) };
+        var levels = new ThrowingLevelMembers();
+        var resolver = new MemberResolver(exec, levels);
 
-        var resolver = new MemberResolver(exec, new ThrowingLevelMembers());
+        var result = await resolver.ResolveAsync("Ventes", Level, ["EUR", "Aurore"]);
 
-        var result = await resolver.ResolveAsync("Ventes", Level, ["EUR"]);
-
-        Assert.Single(result.UniqueNames);
+        Assert.Equal(1, levels.Calls);
+        Assert.Equal([$"{Level}.&[EUR]"], result.UniqueNames);
+        Assert.Equal(["Aurore"], result.Unresolved);
     }
 
     private sealed class ThrowingLevelMembers : ILevelMemberReader
     {
+        public int Calls { get; private set; }
+
         public Task<IReadOnlyList<LevelMember>> GetLevelMembersAsync(
             string cube, string levelUniqueName, int limit, CancellationToken ct = default)
-            => throw new InvalidOperationException("niveau illisible");
+        {
+            Calls++;
+            throw new InvalidOperationException("niveau illisible");
+        }
     }
 
     [Fact]
-    public static void ParseKeys_AccepteLesSeparateursCourantsDUnCollage()
+    public static void ParseKeys_CollageMultiligne_DecoupeSurLignesEtTabulations()
     {
-        var parsed = MemberResolver.ParseKeys("EUR\r\nUSD\nGBP\tCHF; JPY,SEK");
+        var parsed = MemberResolver.ParseKeys("EUR\r\nUSD\nGBP\tCHF");
 
-        Assert.Equal(["EUR", "USD", "GBP", "CHF", "JPY", "SEK"], parsed);
+        Assert.Equal(["EUR", "USD", "GBP", "CHF"], parsed);
+    }
+
+    [Fact]
+    public static void ParseKeys_CollageMultiligne_GardeLesVirgulesDesLibelles()
+    {
+        // "Actions, Europe" is one caption: splitting it could resolve "Europe"
+        // to another member and silently filter on the wrong figure.
+        var parsed = MemberResolver.ParseKeys("Actions, Europe\nTaux; court terme");
+
+        Assert.Equal(["Actions, Europe", "Taux; court terme"], parsed);
+    }
+
+    [Fact]
+    public static void ParseKeys_SaisieSurUneLigne_DecoupeSurVirgulesEtPointsVirgules()
+    {
+        var parsed = MemberResolver.ParseKeys("EUR, USD;GBP");
+
+        Assert.Equal(["EUR", "USD", "GBP"], parsed);
+    }
+
+    [Fact]
+    public static void BuildUniqueName_DoubleLesCrochetsFermants()
+        => Assert.Equal("[D].[H].[L].&[A]]B]", MemberResolver.BuildUniqueName("[D].[H].[L]", "A]B"));
+
+    [Fact]
+    public async Task ResolveAsync_EchappeLesApostrophesEtLeNomDuCube()
+    {
+        var exec = new FakeExecutor { Responder = (_, _) => Captions("x") };
+        var resolver = new MemberResolver(exec);
+
+        await resolver.ResolveAsync("Cube]X", Level, ["L'Oréal"]);
+
+        Assert.Contains("&[L''Oréal]", exec.Queries[0]);
+        Assert.EndsWith("FROM [Cube]]X]", exec.Queries[0]);
+    }
+
+    [Theory]
+    [InlineData("#ERREUR")]
+    public async Task ResolveAsync_CelluleEnErreur_NEstPasUnMembreTrouve(string marker)
+    {
+        var exec = new FakeExecutor { Responder = (_, _) => Captions(marker) };
+        var resolver = new MemberResolver(exec);
+
+        var result = await resolver.ResolveAsync("C", Level, ["[EUR]x"]);
+
+        Assert.Empty(result.UniqueNames);
+        Assert.Equal(["[EUR]x"], result.Unresolved);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_CelluleCellError_NEstPasUnMembreTrouve()
+    {
+        var exec = new FakeExecutor
+        {
+            Responder = (_, _) => new QueryResult(
+                [new GridColumn("v0", "__cap0", false)],
+                [new Dictionary<string, object?> { ["v0"] = new Query.CellError("type de clé") }],
+                1, 1, 0),
+        };
+        var resolver = new MemberResolver(exec);
+
+        var result = await resolver.ResolveAsync("C", Level, ["Aurore"]);
+
+        Assert.Empty(result.UniqueNames);
+        Assert.Equal(["Aurore"], result.Unresolved);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_NomUniqueDUneAutreHierarchie_EstRefuse()
+    {
+        var exec = new FakeExecutor();
+        var resolver = new MemberResolver(exec);
+
+        var result = await resolver.ResolveAsync(
+            "C", Level, ["[Fonds].[Fonds].&[F1]", "[Devise].[Devise].&[EUR]"]);
+
+        Assert.Equal(["[Devise].[Devise].&[EUR]"], result.UniqueNames);
+        Assert.Equal(["[Fonds].[Fonds].&[F1]"], result.Unresolved);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_CleEtLibelleDuMemeMembre_NeSontPasDoubles()
+    {
+        // "EUR" by key, "Euro" by caption: both designate the same member.
+        var exec = new FakeExecutor { Responder = (_, _) => Captions("Euro", null) };
+        var level = new FakeLevelMembers(("Euro", $"{Level}.&[EUR]"));
+        var resolver = new MemberResolver(exec, level);
+
+        var result = await resolver.ResolveAsync("C", Level, ["EUR", "Euro"]);
+
+        Assert.Equal([$"{Level}.&[EUR]"], result.UniqueNames);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_NiveauTronque_EstSignale()
+    {
+        var exec = new FakeExecutor { Responder = (_, _) => Captions((string?)null) };
+        var many = Enumerable.Range(0, MemberResolver.LevelMemberLimit + 1)
+            .Select(i => ($"M{i}", $"{Level}.&[{i}]"))
+            .ToArray();
+        var resolver = new MemberResolver(exec, new FakeLevelMembers(many));
+
+        var result = await resolver.ResolveAsync("C", Level, ["M3"]);
+
+        Assert.True(result.LevelTruncated);
+        Assert.Equal([$"{Level}.&[3]"], result.UniqueNames);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_QuandToutEchoue_RemonteLErreurDuServeur()
+    {
+        // Every query fails: the keys are not the problem, the server is.
+        var exec = new FakeExecutor { Responder = (_, _) => throw new InvalidOperationException("cube absent") };
+        var resolver = new MemberResolver(exec);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => resolver.ResolveAsync("C", Level, ["EUR", "USD"]));
+
+        Assert.Contains("cube absent", ex.Message);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_Annulation_NEstPasTransformeeEnClesNonResolues()
+    {
+        var exec = new FakeExecutor { Responder = (_, _) => throw new OperationCanceledException() };
+        var resolver = new MemberResolver(exec);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => resolver.ResolveAsync("C", Level, ["EUR", "USD"]));
+        Assert.Single(exec.Queries);
     }
 }

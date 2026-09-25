@@ -39,13 +39,19 @@ public static class CalculationValidator
         return messages;
     }
 
-    /// <summary>MDX unique name of the calculation, as Excel will need to know it.</summary>
+    /// <summary>
+    /// MDX unique name of the calculation, as Excel will need to know it. A
+    /// named set has no parent: its name is bare ("[Top10]", as in the
+    /// CubeFields.AddSet documentation) — a parent hierarchy left over from
+    /// the member form must not leak into it.
+    /// </summary>
     public static string QualifiedName(CalculationDefinition definition)
     {
         var name = definition.Name.Trim();
         return definition.Kind switch
         {
             CalculationKind.Measure => $"[Measures].[{name}]",
+            CalculationKind.Set => $"[{name}]",
             _ => $"{definition.ParentHierarchy}.[{name}]",
         };
     }
