@@ -190,7 +190,8 @@ the answers suffers, add a `cube` parameter to `RunAsync` in the
 submodule — it would also be a fix for CubeScope.
 
 **Packaging (2026-07-27)** — `build\pack.ps1` produces a folder of 4 files
-(the packed `.xll` + three natives) and its zip, instead of the 76 files of
+(the packed `.xll` + three natives; plus README, LICENSE and, since
+2026-09-25, THIRD-PARTY-NOTICES.txt) and its zip, instead of the 76 files of
 the build folder. `release.yml` workflow on `v*` tags.
 
 **Remaining debt**: the repository has **no remote** and nothing is pushed.
@@ -211,6 +212,15 @@ the build folder. `release.yml` workflow on `v*` tags.
 - The only test that counts: extract the zip into an **isolated** folder and
   load the `.xll` from there. Saving a calculation in the library exercises
   SQLite, and therefore native resolution.
+- **Third-party notices are generated, never written by hand**:
+  `build\third-party-notices.ps1` (called by `pack.ps1`) reads the NuGet
+  packages the add-in resolves (`dotnet list package --include-transitive`)
+  and the npm packages of the pane (`npm ls --omit=dev`), with their license
+  texts. `npm ls` exits non-zero on any tree warning (an override is one):
+  under Windows PowerShell 5.1 and `$ErrorActionPreference = 'Stop'`, its
+  stderr becomes a terminating error — the call runs under 'Continue'.
+- The "About" section of the pane reads the version from the assembly
+  (`AppInfo`), so it always names the build Excel actually loaded.
 
 **Phase 4: suspended.** It was meant to measure whether Excel queries the server
 during an operation on the PivotTable. The question was settled without code:

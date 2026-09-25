@@ -73,6 +73,20 @@ internal sealed class WebBridge : IDisposable
         _watcher = new PivotWatcher(NotifyPivotChanged);
         _router.DescribeError = DescribeError;
 
+        _router.Register("app.info", (_, _) =>
+            Task.FromResult<object?>(new
+            {
+                version = AppInfo.Version,
+                commit = AppInfo.Commit,
+                repository = AppInfo.Repository,
+            }));
+
+        _router.Register("app.openRepository", (_, _) =>
+        {
+            AppInfo.OpenRepository();
+            return Task.FromResult<object?>(null);
+        });
+
         _router.Register("pane.takeTab", (_, _) =>
             Task.FromResult<object?>(new { tab = _control.TakePendingTab() }));
 

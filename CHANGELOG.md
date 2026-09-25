@@ -3,6 +3,17 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **About** section in the pane (the **?** button of the header): the version
+  of the loaded add-in, read from its assembly, the build commit, the license,
+  a link to the repository and the main third-party components.
+- **THIRD-PARTY-NOTICES.txt** in the deliverable, generated at packaging time
+  from the NuGet and npm packages actually resolved, with their license texts.
+- The load line of the log now gives the PivotScope version.
+
 ## [0.6.1] — 2026-09-25
 
 ### Security

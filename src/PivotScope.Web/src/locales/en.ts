@@ -15,6 +15,17 @@ const en: typeof fr = {
     unknownError: 'Unknown error.',
   },
 
+  about: {
+    title: 'About PivotScope',
+    tagline: 'Excel add-in for SSAS Multidimensional developers.',
+    license: 'Open source under the MIT license — © 2026 David Simon.',
+    repository: 'Source code on GitHub',
+    thirdParty: 'Third-party components',
+    notices:
+      'The full license texts are in THIRD-PARTY-NOTICES.txt, shipped next to the ' +
+      '.xll file.',
+  },
+
   diagnostic: {
     noPivot: 'Place the cursor inside a PivotTable.',
     notOlap:

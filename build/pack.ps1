@@ -9,7 +9,8 @@
     no observable effect with ExcelDna.AddIn 1.9. So they are placed in
     runtimes\win-x64\native\, where .NET resolves them.
 
-    Result: 4 files instead of the 76 in the build folder.
+    Result: 5 files instead of the 76 in the build folder (with the
+    third-party notices).
 
 .EXAMPLE
     pwsh build\pack.ps1
@@ -57,6 +58,9 @@ try {
 
     Copy-Item 'README.md' $out
     Copy-Item 'LICENSE' $out
+
+    # The licenses of the bundled components travel with the add-in.
+    & (Join-Path $PSScriptRoot 'third-party-notices.ps1') -Output (Join-Path $out 'THIRD-PARTY-NOTICES.txt')
 
     $zip = 'artifacts/PivotScope.zip'
     if (Test-Path $zip) { Remove-Item $zip -Force }
