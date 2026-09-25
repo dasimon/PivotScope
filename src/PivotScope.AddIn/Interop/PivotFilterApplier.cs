@@ -1,5 +1,4 @@
 using System.Text;
-using ExcelDna.Integration;
 using PivotScope.AddIn.Diagnostics;
 using Xl = Microsoft.Office.Interop.Excel;
 
@@ -22,8 +21,13 @@ namespace PivotScope.AddIn.Interop;
 /// </summary>
 public static class PivotFilterApplier
 {
+    /// <param name="target">
+    /// The PivotTable captured when the user launched the filter: resolving
+    /// the list takes seconds, and the cursor may have moved to another
+    /// PivotTable with the same field in the meantime.
+    /// </param>
     public static void Apply(
-        string cubeFieldName, string levelUniqueName, IReadOnlyList<string> uniqueNames)
+        PivotRef target, string cubeFieldName, string levelUniqueName, IReadOnlyList<string> uniqueNames)
     {
         if (uniqueNames.Count == 0)
             throw new InvalidOperationException(
@@ -31,14 +35,7 @@ public static class PivotFilterApplier
                 "été appliqué. Vérifiez le niveau choisi — les clés et les libellés sont " +
                 "acceptés, mais ils doivent appartenir à ce niveau-là.");
 
-        var app = (Xl.Application)ExcelDnaUtil.Application;
-
-        Xl.PivotTable? pivot = null;
-        try { pivot = app.ActiveCell?.PivotTable; } catch { /* outside a PivotTable */ }
-
-        if (pivot is null)
-            throw new InvalidOperationException(
-                "Placez le curseur dans un tableau croisé dynamique.");
+        var pivot = PivotLocator.Resolve(target);
 
         var field = FindCubeField(pivot, cubeFieldName)
             ?? throw new InvalidOperationException(
@@ -46,9 +43,67 @@ public static class PivotFilterApplier
 
         var pivotField = FindPivotFieldForLevel(field, levelUniqueName);
 
-        field.ClearManualFilter();
-        field.IncludeNewItemsInFilter = false;
-        pivotField.VisibleItemsList = uniqueNames.ToArray();
+        // ClearManualFilter comes first (documented), which means the current
+        // filter is gone BEFORE we know whether the new one will be accepted.
+        // Snapshot it, so that a rejected list does not leave the table
+        // unfiltered — showing every member is a wrong figure too.
+        var snapshot = Snapshot(field);
+
+        try
+        {
+            field.ClearManualFilter();
+            field.IncludeNewItemsInFilter = false;
+
+            // A report filter only accepts several items once multiple
+            // selection is on.
+            if (field.Orientation == Xl.XlPivotFieldOrientation.xlPageField && uniqueNames.Count > 1)
+                field.EnableMultiplePageItems = true;
+
+            pivotField.VisibleItemsList = uniqueNames.ToArray();
+        }
+        catch
+        {
+            Restore(field, snapshot);
+            throw;
+        }
+    }
+
+    private sealed record FilterSnapshot(
+        bool IncludeNewItems, IReadOnlyList<(Xl.PivotField Field, object Items)> Levels);
+
+    private static FilterSnapshot Snapshot(Xl.CubeField field)
+    {
+        var include = true;
+        try { include = field.IncludeNewItemsInFilter; } catch { /* not readable */ }
+
+        var levels = new List<(Xl.PivotField, object)>();
+        foreach (Xl.PivotField pf in field.PivotFields)
+        {
+            try
+            {
+                if (pf.VisibleItemsList is Array { Length: > 0 } items) levels.Add((pf, items));
+            }
+            catch { /* no manual filter on this level */ }
+        }
+        return new FilterSnapshot(include, levels);
+    }
+
+    private static void Restore(Xl.CubeField field, FilterSnapshot snapshot)
+    {
+        try
+        {
+            field.ClearManualFilter();
+            if (snapshot.Levels.Count > 0)
+            {
+                field.IncludeNewItemsInFilter = false;
+                foreach (var (pf, items) in snapshot.Levels) pf.VisibleItemsList = items;
+            }
+            field.IncludeNewItemsInFilter = snapshot.IncludeNewItems;
+        }
+        catch (Exception ex)
+        {
+            FileLog.Write($"Could not restore the previous filter of '{field.Name}'.", ex);
+        }
     }
 
     private static Xl.CubeField? FindCubeField(Xl.PivotTable pivot, string name)
@@ -71,7 +126,11 @@ public static class PivotFilterApplier
         var levelName = LastSegment(levelUniqueName);
         var candidates = new List<Xl.PivotField>();
 
-        foreach (Xl.PivotField pf in field.PivotFields) candidates.Add(pf);
+        // Member properties are PivotFields of the CubeField too: left in, they
+        // would defeat the "single candidate" fallback below on any attribute
+        // that has properties.
+        foreach (Xl.PivotField pf in field.PivotFields)
+            if (!IsMemberProperty(pf)) candidates.Add(pf);
 
         foreach (var pf in candidates)
         {
@@ -111,6 +170,11 @@ public static class PivotFilterApplier
         var last = uniqueName.LastIndexOf(".[", StringComparison.Ordinal);
         if (last < 0) return uniqueName;
         return uniqueName[(last + 2)..].TrimEnd(']');
+    }
+
+    private static bool IsMemberProperty(Xl.PivotField pf)
+    {
+        try { return pf.IsMemberProperty; } catch { return false; }
     }
 
     private static string? SafeName(Xl.PivotField pf) { try { return pf.Name as string; } catch { return null; } }

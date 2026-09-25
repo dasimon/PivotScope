@@ -273,7 +273,13 @@ public static class PivotComfort
         var pivot = RequirePivot();
         var cache = pivot.PivotCache();
 
-        if (!cache.EnableRefresh) cache.EnableRefresh = true;
+        // Refresh disabled on the cache is the workbook author's choice (a
+        // frozen snapshot): turning it back on silently would undo it.
+        if (!cache.EnableRefresh)
+            throw new InvalidOperationException(
+                "L'actualisation de ce tableau croisé dynamique est désactivée dans le " +
+                "classeur (Options du tableau croisé dynamique > Données). Réactivez-la " +
+                "si vous voulez l'actualiser.");
         try { pivot.ManualUpdate = false; } catch { /* not settable */ }
 
         pivot.RefreshTable();

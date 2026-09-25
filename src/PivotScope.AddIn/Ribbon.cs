@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
+using ExcelDna.Integration;
 using ExcelDna.Integration.CustomUI;
 using PivotScope.AddIn.Diagnostics;
 using PivotScope.AddIn.Interop;
@@ -109,11 +110,21 @@ public class PivotScopeRibbon : ExcelRibbon
         return bitmap;
     }
 
-    /// <summary>Asks the ribbon to re-read the displayed state.</summary>
+    /// <summary>
+    /// Asks the ribbon to re-read the displayed state. Safe from any thread:
+    /// the call itself is COM, so it is queued to Excel's main thread.
+    /// </summary>
     internal static void Invalidate()
     {
-        try { _ribbon?.Invalidate(); }
-        catch (Exception ex) { FileLog.Write("Ribbon invalidation failed.", ex); }
+        try
+        {
+            ExcelAsyncUtil.QueueAsMacro(() =>
+            {
+                try { _ribbon?.Invalidate(); }
+                catch (Exception ex) { FileLog.Write("Ribbon invalidation failed.", ex); }
+            });
+        }
+        catch (Exception ex) { FileLog.Write("Ribbon invalidation could not be queued.", ex); }
     }
 
     public void OnOpenPane(IRibbonControl control)

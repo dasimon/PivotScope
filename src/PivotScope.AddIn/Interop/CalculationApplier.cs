@@ -80,45 +80,166 @@ public static class CalculationApplier
         var uniqueName = CalculationValidator.QualifiedName(definition);
 
         // Replace rather than fail on a duplicate: that is the expected action
-        // while fine-tuning an expression.
-        DeleteIfExists(pivot, uniqueName);
+        // while fine-tuning an expression. But the working version is kept
+        // until the new one has been accepted: a typo must not cost the user
+        // the calculation they had, nor its place in the values area.
+        var previous = Capture(pivot, uniqueName);
+        if (previous is not null) previous.Member.Delete();
 
         Xl.CalculatedMember created;
-        if (definition.Kind is CalculationKind.Set)
+        try
         {
-            created = pivot.CalculatedMembers.Add(
-                uniqueName, definition.Expression, definition.SolveOrder,
-                Xl.XlCalculatedMemberType.xlCalculatedSet);
-            // Documented: a set only appears after AddSet.
-            pivot.CubeFields.AddSet(uniqueName, definition.Name.Trim());
+            created = Create(pivot, uniqueName, definition.Name.Trim(), definition.Expression,
+                definition.SolveOrder, definition.Kind, definition.DisplayFolder,
+                definition.NumberFormat, definition.ParentHierarchy);
+
+            if (!created.IsValid)
+            {
+                created.Delete();
+                throw new InvalidOperationException(
+                    "Le serveur a refusé ce calcul : vérifiez l'expression MDX." +
+                    (previous is null ? string.Empty : " La version précédente a été conservée."));
+            }
         }
-        else
+        catch
         {
-            created = pivot.CalculatedMembers.AddCalculatedMember(
-                Name: uniqueName,
-                Formula: definition.Expression,
-                SolveOrder: definition.SolveOrder,
-                Type: definition.Kind is CalculationKind.Measure
-                    ? Xl.XlCalculatedMemberType.xlCalculatedMeasure
-                    : Xl.XlCalculatedMemberType.xlCalculatedMember,
-                DisplayFolder: (object?)definition.DisplayFolder ?? Type.Missing,
-                MeasureGroup: Type.Missing,
-                ParentHierarchy: (object?)definition.ParentHierarchy ?? Type.Missing,
-                ParentMember: Type.Missing,
-                NumberFormat: (object?)definition.NumberFormat ?? Type.Missing);
+            if (previous is not null) Recreate(pivot, uniqueName, previous);
+            throw;
         }
 
-        if (!created.IsValid)
+        // A measure that was shown stays shown: deleting it to recreate it
+        // took it out of the values area, whatever the checkbox says.
+        if (definition.Kind is CalculationKind.Measure && (addToPivot || previous?.DataPosition is not null))
         {
-            created.Delete();
-            throw new InvalidOperationException(
-                "Le serveur a refusé ce calcul : vérifiez l'expression MDX.");
-        }
-
-        if (addToPivot && definition.Kind is CalculationKind.Measure)
             ShowMeasure(pivot, uniqueName, definition.Name.Trim());
+            if (previous?.DataPosition is int position) TryRestorePosition(pivot, uniqueName, position);
+        }
 
         return uniqueName;
+    }
+
+    /// <summary>What it takes to put a calculation back exactly as it was.</summary>
+    private sealed record PreviousCalculation(
+        Xl.CalculatedMember Member,
+        string Formula,
+        int SolveOrder,
+        CalculationKind Kind,
+        string? DisplayFolder,
+        string? NumberFormat,
+        string? ParentHierarchy,
+        string Caption,
+        int? DataPosition);
+
+    private static PreviousCalculation? Capture(Xl.PivotTable pivot, string uniqueName)
+    {
+        foreach (Xl.CalculatedMember member in pivot.CalculatedMembers)
+        {
+            if (!string.Equals(member.Name, uniqueName, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var kind = member.Type switch
+            {
+                Xl.XlCalculatedMemberType.xlCalculatedMeasure => CalculationKind.Measure,
+                Xl.XlCalculatedMemberType.xlCalculatedSet => CalculationKind.Set,
+                _ => CalculationKind.Member,
+            };
+
+            string? folder = null, format = null, parent = null;
+            try { folder = Blank(member.DisplayFolder); } catch { /* not a measure */ }
+            try { format = CalculationNumberFormat.FromExcel((int)member.NumberFormat); } catch { /* not a member */ }
+            try { parent = Blank(member.ParentHierarchy); } catch { /* not a member */ }
+
+            int? position = null;
+            var caption = LastSegment(uniqueName);
+            foreach (Xl.CubeField cf in pivot.CubeFields)
+            {
+                if (!string.Equals(cf.Name, uniqueName, StringComparison.OrdinalIgnoreCase)) continue;
+                try
+                {
+                    if (cf.Orientation == Xl.XlPivotFieldOrientation.xlDataField)
+                    {
+                        position = cf.Position;
+                        caption = cf.Caption;
+                    }
+                }
+                catch { /* position unknown: the measure comes back at the end */ }
+                break;
+            }
+
+            return new PreviousCalculation(
+                member, member.Formula, member.SolveOrder, kind, folder, format, parent, caption, position);
+        }
+        return null;
+    }
+
+    private static void Recreate(Xl.PivotTable pivot, string uniqueName, PreviousCalculation previous)
+    {
+        try
+        {
+            Create(pivot, uniqueName, previous.Caption, previous.Formula, previous.SolveOrder,
+                previous.Kind, previous.DisplayFolder, previous.NumberFormat, previous.ParentHierarchy);
+
+            if (previous.DataPosition is int position)
+            {
+                ShowMeasure(pivot, uniqueName, previous.Caption);
+                TryRestorePosition(pivot, uniqueName, position);
+            }
+        }
+        catch (Exception ex)
+        {
+            FileLog.Write($"Could not restore the previous version of '{uniqueName}'. " +
+                          $"Formula was: {previous.Formula}", ex);
+        }
+    }
+
+    private static Xl.CalculatedMember Create(
+        Xl.PivotTable pivot, string uniqueName, string caption, string formula, int solveOrder,
+        CalculationKind kind, string? displayFolder, string? numberFormat, string? parentHierarchy)
+    {
+        if (kind is CalculationKind.Set)
+        {
+            var set = pivot.CalculatedMembers.Add(
+                uniqueName, formula, solveOrder, Xl.XlCalculatedMemberType.xlCalculatedSet);
+            // Documented: a set only appears after AddSet.
+            pivot.CubeFields.AddSet(uniqueName, caption);
+            return set;
+        }
+
+        return pivot.CalculatedMembers.AddCalculatedMember(
+            Name: uniqueName,
+            Formula: formula,
+            SolveOrder: solveOrder,
+            Type: kind is CalculationKind.Measure
+                ? Xl.XlCalculatedMemberType.xlCalculatedMeasure
+                : Xl.XlCalculatedMemberType.xlCalculatedMember,
+            DisplayFolder: (object?)displayFolder ?? Type.Missing,
+            MeasureGroup: Type.Missing,
+            ParentHierarchy: (object?)parentHierarchy ?? Type.Missing,
+            ParentMember: Type.Missing,
+            // An enumeration, not a format string (see CalculationNumberFormat).
+            NumberFormat: CalculationNumberFormat.ToExcel(numberFormat) is int format
+                ? (Xl.XlCalcMemNumberFormatType)format
+                : Type.Missing);
+    }
+
+    private static void TryRestorePosition(Xl.PivotTable pivot, string uniqueName, int position)
+    {
+        foreach (Xl.CubeField cf in pivot.CubeFields)
+        {
+            if (!string.Equals(cf.Name, uniqueName, StringComparison.OrdinalIgnoreCase)) continue;
+            try { cf.Position = position; }
+            catch (Exception ex) { FileLog.Write($"Could not restore the position of '{uniqueName}'.", ex); }
+            return;
+        }
+    }
+
+    private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    /// <summary>"[Measures].[Marge]" → "Marge".</summary>
+    private static string LastSegment(string uniqueName)
+    {
+        var last = uniqueName.LastIndexOf('[');
+        return last < 0 ? uniqueName : uniqueName[(last + 1)..].TrimEnd(']');
     }
 
     public static void Delete(string uniqueName)
@@ -226,11 +347,11 @@ public static class CalculationApplier
         {
             return member.Type switch
             {
-                Xl.XlCalculatedMemberType.xlCalculatedMeasure => "mesure",
-                Xl.XlCalculatedMemberType.xlCalculatedSet => "ensemble",
-                _ => "membre",
+                Xl.XlCalculatedMemberType.xlCalculatedMeasure => nameof(CalculationKind.Measure),
+                Xl.XlCalculatedMemberType.xlCalculatedSet => nameof(CalculationKind.Set),
+                _ => nameof(CalculationKind.Member),
             };
         }
-        catch { return "membre"; }
+        catch { return nameof(CalculationKind.Member); }
     }
 }

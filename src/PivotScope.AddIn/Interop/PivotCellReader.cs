@@ -16,6 +16,8 @@ namespace PivotScope.AddIn.Interop;
 /// </summary>
 public static class PivotCellReader
 {
+    private static bool _tupleLogged;
+
     public static string ReadTuple()
     {
         var app = (Xl.Application)ExcelDnaUtil.Application;
@@ -43,8 +45,14 @@ public static class PivotCellReader
         {
             var tuple = pivotCell.MDX;
             // The exact format returned by Excel is not documented: log it
-            // on first use rather than conclude on an assumption.
-            FileLog.Write($"PivotCell.MDX = {tuple}");
+            // on first use rather than conclude on an assumption. Once only:
+            // tuples carry business member names, and the log has no need
+            // for every cell the user clicks.
+            if (!_tupleLogged)
+            {
+                _tupleLogged = true;
+                FileLog.Write($"PivotCell.MDX = {tuple}");
+            }
             return tuple;
         }
         catch (Exception ex)

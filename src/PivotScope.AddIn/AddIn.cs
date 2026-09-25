@@ -31,6 +31,8 @@ public sealed class PivotScopeAddIn : IExcelAddIn
         // CommandBars survive the add-in being unloaded: without this
         // cleanup, Excel keeps dead entries in the context menu.
         Interop.ContextMenu.Remove();
+        // Releases the SSAS connections and the SQLite library.
+        try { Pane.PaneManager.Shutdown(); } catch (Exception ex) { FileLog.Write("Shutdown failed.", ex); }
         FileLog.Write("PivotScope unloaded.");
     }
 }

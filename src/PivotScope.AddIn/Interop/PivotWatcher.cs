@@ -40,6 +40,7 @@ internal sealed class PivotWatcher : IDisposable
         _app.SheetSelectionChange += OnSelectionChange;
         _app.SheetPivotTableUpdate += OnPivotUpdate;
         _app.WorkbookActivate += OnWorkbookActivate;
+        _app.SheetActivate += OnSheetActivate;
     }
 
     private void OnSelectionChange(object sheet, Xl.Range target)
@@ -69,9 +70,20 @@ internal sealed class PivotWatcher : IDisposable
     private void OnWorkbookActivate(Xl.Workbook book)
         => Safe(() => { _lastPivot = string.Empty; _onChanged(true); });
 
+    /// <summary>
+    /// Changing sheets with the keyboard (Ctrl+PgDn) raises no selection
+    /// change: without this, the pane kept showing the previous sheet's table.
+    /// </summary>
+    private void OnSheetActivate(object sheet)
+        => Safe(() => { _lastPivot = string.Empty; _onChanged(true); });
+
+    /// <summary>
+    /// Workbook + sheet + name: Excel gives the first PivotTable of every
+    /// sheet the same name, so the name alone would miss a move between them.
+    /// </summary>
     private static string PivotKey(Xl.Range target)
     {
-        try { return target.PivotTable?.Name ?? string.Empty; }
+        try { return PivotLocator.Describe(target.PivotTable)?.Key ?? string.Empty; }
         catch { return string.Empty; }
     }
 
@@ -99,5 +111,6 @@ internal sealed class PivotWatcher : IDisposable
         try { _app.SheetSelectionChange -= OnSelectionChange; } catch { /* Excel is closing */ }
         try { _app.SheetPivotTableUpdate -= OnPivotUpdate; } catch { /* Excel is closing */ }
         try { _app.WorkbookActivate -= OnWorkbookActivate; } catch { /* Excel is closing */ }
+        try { _app.SheetActivate -= OnSheetActivate; } catch { /* Excel is closing */ }
     }
 }

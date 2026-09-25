@@ -49,6 +49,12 @@ public sealed class PaneControl : UserControl, IPaneControl
     /// <summary>Raw JSON message sent by the SPA.</summary>
     internal event EventHandler<string>? MessageReceived;
 
+    private const string Origin = $"https://{VirtualHost}/";
+
+    /// <summary>Tab asked for by the context menu, until the SPA collects it.</summary>
+    private string? _pendingTab;
+    private bool _loaded;
+
     public PaneControl()
     {
         Dock = DockStyle.Fill;
@@ -71,13 +77,33 @@ public sealed class PaneControl : UserControl, IPaneControl
             var core = _web.CoreWebView2;
             core.Settings.AreDefaultContextMenusEnabled = false;
             core.Settings.IsStatusBarEnabled = false;
+#if DEBUG
             core.Settings.AreDevToolsEnabled = true;
+#else
+            core.Settings.AreDevToolsEnabled = false;
+            // F5 / Ctrl+R would reload the SPA and lose everything typed in
+            // the pane; the shortcuts the SPA uses still reach it.
+            core.Settings.AreBrowserAcceleratorKeysEnabled = false;
+#endif
 
             core.AddWebResourceRequestedFilter(
                 $"https://{VirtualHost}/*", CoreWebView2WebResourceContext.All);
             core.WebResourceRequested += OnWebResourceRequested;
-            core.WebMessageReceived += (_, e) =>
-                MessageReceived?.Invoke(this, e.TryGetWebMessageAsString() ?? string.Empty);
+            core.WebMessageReceived += OnWebMessageReceived;
+
+            // The pane only ever shows the embedded SPA: the bridge can write
+            // to the workbook and call the AI with the user's key, so no other
+            // page may end up talking to it.
+            core.NavigationStarting += (_, e) =>
+            {
+                if (!e.Uri.StartsWith(Origin, StringComparison.OrdinalIgnoreCase)) e.Cancel = true;
+            };
+            core.NewWindowRequested += (_, e) => e.Handled = true;
+            core.NavigationCompleted += (_, _) =>
+            {
+                _loaded = true;
+                if (_pendingTab is not null) PostShowTab(_pendingTab);
+            };
 
             core.Navigate($"https://{VirtualHost}/index.html");
             FileLog.Write("Pane initialized.");
@@ -90,6 +116,46 @@ public sealed class PaneControl : UserControl, IPaneControl
                 "est installé. Détail dans %LOCALAPPDATA%\\PivotScope\\logs.");
         }
     }
+
+    /// <summary>Messages from anything but the embedded SPA are ignored.</summary>
+    private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        try
+        {
+            if (!e.Source.StartsWith(Origin, StringComparison.OrdinalIgnoreCase))
+            {
+                FileLog.Write($"Message ignored from an unexpected origin: {e.Source}");
+                return;
+            }
+            MessageReceived?.Invoke(this, e.TryGetWebMessageAsString() ?? string.Empty);
+        }
+        catch (Exception ex)
+        {
+            // Raised on Excel's UI thread: never let it through.
+            FileLog.Write("Unreadable message from the SPA.", ex);
+        }
+    }
+
+    /// <summary>
+    /// Asks the SPA to show a tab. If it is not loaded yet, the request is
+    /// parked: the SPA collects it at startup (pane.takeTab), or it is posted
+    /// once navigation completes.
+    /// </summary>
+    internal void RequestTab(string tab)
+    {
+        _pendingTab = tab;
+        if (_loaded) PostShowTab(tab);
+    }
+
+    internal string? TakePendingTab()
+    {
+        var tab = _pendingTab;
+        _pendingTab = null;
+        return tab;
+    }
+
+    private void PostShowTab(string tab)
+        => PostToWeb($$"""{"event":"showTab","tab":{{System.Text.Json.JsonSerializer.Serialize(tab)}}}""");
 
     /// <summary>Sends a JSON response to the SPA.</summary>
     internal void PostToWeb(string json)

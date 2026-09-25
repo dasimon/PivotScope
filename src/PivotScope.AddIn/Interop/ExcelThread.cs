@@ -17,17 +17,22 @@ public static class ExcelThread
 
         ExcelAsyncUtil.QueueAsMacro(() =>
         {
+            // The result is published OUTSIDE the culture scope: whatever
+            // resumes on it must see the user's culture, not en-US.
+            T result;
             try
             {
                 using (InvariantFormattingScope.Enter())
                 {
-                    tcs.SetResult(comWork());
+                    result = comWork();
                 }
             }
             catch (Exception ex)
             {
                 tcs.SetException(ex);
+                return;
             }
+            tcs.SetResult(result);
         });
 
         return tcs.Task;

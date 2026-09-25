@@ -19,6 +19,14 @@ public static class ContextMenu
     private const string Tag = "PivotScope";
     private const string PivotContextMenu = "PivotTable Context Menu";
 
+    /// <summary>
+    /// The buttons must stay referenced: the Click subscription lives on the
+    /// COM wrapper, and once the garbage collector reclaims a local variable
+    /// the entry is still displayed but no longer does anything (known Office
+    /// behaviour).
+    /// </summary>
+    private static readonly List<Office.CommandBarButton> Buttons = [];
+
     public static void Install()
     {
         try
@@ -44,6 +52,7 @@ public static class ContextMenu
 
     public static void Remove()
     {
+        Buttons.Clear();
         try
         {
             var app = (Xl.Application)ExcelDnaUtil.Application;
@@ -78,5 +87,6 @@ public static class ContextMenu
             try { action(); }
             catch (Exception ex) { FileLog.Write($"'{caption}' failed.", ex); }
         };
+        Buttons.Add(button);
     }
 }
