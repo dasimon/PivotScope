@@ -15,7 +15,7 @@
   },
   "comment_overrides": "monaco-editor 0.56 pulls in dompurify 3.4.8, which is affected by three advisories (<=3.4.11). npm audit fix --force would downgrade Monaco to 0.53, which would break the exports map used by monaco-core. We force the transitive dependency to the patched version. Reassess when monaco upgrades it itself.",
   "overrides": {
-    "dompurify": "^3.4.12"
+    "dompurify": "^3.4.16"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.1",
