@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import { currentLocale, setLocale, type Locale } from '../i18n'
+import { describeDiagnostic } from '../diagnostic'
 import type { PivotContext } from '../types'
 
 defineProps<{ context: PivotContext | null; busy: boolean }>()
@@ -38,7 +39,13 @@ function onLocaleChange(event: Event) {
     <p v-if="!context" class="muted">{{ t('header.readingContext') }}</p>
 
     <p v-else-if="!context.hasPivot || !context.isOlap" class="muted">
-      {{ context.diagnostic }}
+      {{ describeDiagnostic(context, t) }}
+    </p>
+
+    <!-- OLAP table whose connection could not be read: say it, rather than
+         show dashes that look like an empty but valid state. -->
+    <p v-else-if="context.diagnosticCode" class="notice">
+      {{ describeDiagnostic(context, t) }}
     </p>
 
     <dl v-else class="kv">

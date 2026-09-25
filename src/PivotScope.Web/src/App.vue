@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { call, isHosted, onEvent } from './bridge'
 import { currentLocale } from './i18n'
 import { setCubeMeta } from './mdx-completion'
 import type {
-  AiAction, AiRunResult, CalculationDefinition, CellProvenance, CubeMeta,
+  AiAction, AiRunResult, CalculationDefinition, CellProvenance, ConfirmWriteResult, CubeMeta,
   ExistingCalculation, FieldVisibility, FilterListResult, LevelVisibility,
-  PivotContext, QueryRunResult, StoredCalculation,
+  PivotContext, QueryRunResult, StoredCalculation, WriteMode,
 } from './types'
 import PivotHeader from './components/PivotHeader.vue'
 import MdxView from './components/MdxView.vue'
@@ -29,9 +29,25 @@ type Tab = (typeof TABS)[number]
 
 const { t } = useI18n()
 
+const tabItems = computed<{ id: Tab; label: string }[]>(() => [
+  { id: 'tableau', label: t('tabs.table') },
+  { id: 'requete', label: t('tabs.query') },
+  { id: 'calculs', label: t('tabs.calc') },
+  { id: 'provenance', label: t('tabs.provenance') },
+  { id: 'ia', label: t('tabs.ai') },
+])
+
 const tab = ref<Tab>('tableau')
 const context = ref<PivotContext | null>(null)
+/**
+ * Last OLAP PivotTable seen. The free-form query and the completion keep
+ * working from it after the cursor leaves the table — which is exactly what
+ * choosing a destination cell requires.
+ */
+const lastOlap = ref<PivotContext | null>(null)
 const meta = ref<CubeMeta | null>(null)
+/** Cube the loaded metadata belongs to: a late answer for another cube is dropped. */
+const metaCube = ref<string | null>(null)
 const error = ref<string | null>(null)
 const busyContext = ref(false)
 const busyMeta = ref(false)
@@ -69,21 +85,35 @@ const busyCalc = ref(false)
 const provenance = ref<CellProvenance | null>(null)
 const busyProvenance = ref(false)
 
+/**
+ * The cell follows the cursor: several requests can be in flight at once,
+ * and only the answer to the LAST one describes the cell under the cursor.
+ */
+let provenanceSequence = 0
+
 async function describeCell() {
-  const result = await guard(busyProvenance, () =>
-    call<CellProvenance>('cell.provenance'),
-  )
-  if (result) provenance.value = result
+  const mine = ++provenanceSequence
+  busyProvenance.value = true
+  error.value = null
+  try {
+    const result = await call<CellProvenance>('cell.provenance')
+    if (mine === provenanceSequence) provenance.value = result
+  } catch (e) {
+    if (mine === provenanceSequence) error.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    if (mine === provenanceSequence) busyProvenance.value = false
+  }
 }
 
 const aiConfigured = ref(false)
 const aiAnswer = ref<string | null>(null)
-const aiSeed = ref<string | null>(null)
+/** A counter goes with the text: sending the same expression twice must still reach the panel. */
+const aiSeed = ref<{ text: string; n: number } | null>(null)
 const busyAi = ref(false)
 
 /** From "Ce chiffre": switches to the AI tab with the expression pre-filled. */
 function explainExpression(expression: string) {
-  aiSeed.value = expression
+  aiSeed.value = { text: expression, n: (aiSeed.value?.n ?? 0) + 1 }
   aiAnswer.value = null
   tab.value = 'ia'
 }
@@ -107,7 +137,9 @@ watch(meta, next => setCubeMeta(next))
  * primed — an empty panel does not say it is waiting for a click.
  * The buttons remain, to reload and to see the error when something fails.
  */
-watch(tab, async current => {
+watch(tab, current => loadTab(current))
+
+async function loadTab(current: Tab) {
   if (!context.value?.isOlap) return
 
   if (current === 'tableau') {
@@ -118,7 +150,21 @@ watch(tab, async current => {
   } else if (current === 'provenance') {
     if (!provenance.value) await describeCell()
   }
-})
+}
+
+/**
+ * Another PivotTable: everything read from the previous one is dropped.
+ * Kept, the fields, levels and calculations of table A would be shown — and
+ * acted upon, by name — while the cursor is in table B.
+ */
+function resetPivotState() {
+  fields.value = []
+  levels.value = []
+  levelField.value = ''
+  calculations.value = []
+  provenance.value = null
+  filterPanel.value?.reset()
+}
 
 /** Every error surfaces in a banner. Never a dialog box. */
 async function guard<T>(busy: { value: boolean }, work: () => Promise<T>): Promise<T | null> {
@@ -134,22 +180,44 @@ async function guard<T>(busy: { value: boolean }, work: () => Promise<T>): Promi
   }
 }
 
+function currentCube(): string | null {
+  return context.value?.cube ?? lastOlap.value?.cube ?? null
+}
+
 async function loadContext() {
   const next = await guard(busyContext, () => call<PivotContext>('pivot.context'))
   if (!next) return
-  // Cube change: the cached metadata is no longer worth anything.
-  if (context.value?.cube !== next.cube) {
+
+  const previousKey = context.value?.pivotKey ?? null
+  context.value = next
+  if (next.isOlap && next.server) lastOlap.value = next
+
+  // Leaving the table keeps what was read (coming back must not reload
+  // everything); arriving in ANOTHER table drops it.
+  const switched = next.pivotKey !== null && previousKey !== null && next.pivotKey !== previousKey
+  if (switched) resetPivotState()
+
+  // Another cube: the cached metadata is no longer worth anything. Outside
+  // any table the cube is unknown, and the metadata stays: completion must
+  // keep working while the user picks a destination cell.
+  if (next.cube && next.cube !== metaCube.value) {
     meta.value = null
+    metaCube.value = null
     metaAttempted.value = false
   }
-  context.value = next
+
   void ensureMeta()
+  if (switched) void loadTab(tab.value)
 }
 
 async function loadMeta() {
   metaAttempted.value = true
+  const cube = currentCube()
   const next = await guard(busyMeta, () => call<CubeMeta>('cube.meta'))
-  if (next) meta.value = next
+  if (next && currentCube() === cube) {
+    meta.value = next
+    metaCube.value = cube
+  }
 }
 
 /**
@@ -162,11 +230,21 @@ async function ensureMeta() {
   if (meta.value || metaAttempted.value || busyMeta.value) return
   if (!context.value?.isOlap || !context.value.cube) return
 
+  const cube = context.value.cube
   metaAttempted.value = true
+  busyMeta.value = true
   try {
-    meta.value = await call<CubeMeta>('cube.meta')
+    const next = await call<CubeMeta>('cube.meta')
+    // The cursor may have moved to another cube meanwhile: an answer for
+    // the previous one would feed completion with the wrong cube.
+    if (currentCube() === cube) {
+      meta.value = next
+      metaCube.value = cube
+    }
   } catch {
     // The user still has the "Charger" button to retry and see the error.
+  } finally {
+    busyMeta.value = false
   }
 }
 
@@ -179,6 +257,14 @@ async function runQuery(payload: {
     call<QueryRunResult>('query.run', payload),
   )
   if (result) queryPanel.value?.setResult(result)
+}
+
+/** The user's answer when the destination was not empty. */
+async function confirmWrite(mode: WriteMode) {
+  const result = await guard(busyQuery, () =>
+    call<ConfirmWriteResult>('query.confirmWrite', { mode }),
+  )
+  if (result) queryPanel.value?.setWritten(result)
 }
 
 type CalcDraft = {
@@ -231,7 +317,10 @@ async function removeFromLibrary(id: number) {
 
 async function loadFields() {
   const next = await guard(busyComfort, () => call<FieldVisibility[]>('comfort.fields'))
-  if (next) fields.value = next
+  // On failure, stop here: the next call would clear the error banner
+  // before anyone could read it.
+  if (!next) return
+  fields.value = next
   await refreshAutoRefresh()
 }
 
@@ -266,19 +355,36 @@ async function setAutoRefresh(enabled: boolean) {
     call<{ deferred: boolean }>('comfort.deferLayout', { deferred: !enabled }),
   )
   if (next) autoRefresh.value = !next.deferred
+  // Failure: re-read the real state rather than trust the clicked checkbox.
+  else await refreshAutoRefreshQuietly()
+}
+
+async function refreshAutoRefreshQuietly() {
+  try {
+    const next = await call<{ enabled: boolean }>('comfort.autoRefresh')
+    autoRefresh.value = next.enabled
+  } catch {
+    // Keep the banner of the failed action.
+  }
 }
 
 async function refreshNow() {
-  await guard(busyComfort, () => call<{ refreshed: boolean }>('comfort.refreshNow'))
+  const done = await guard(busyComfort, () => call<{ refreshed: boolean }>('comfort.refreshNow'))
+  // Only a refresh that happened ends the deferred mode; on failure the
+  // banner must stay readable, so nothing else is chained.
+  if (!done) return
   autoRefresh.value = true
   if (levelField.value) await pickLevelField(levelField.value)
 }
 
-async function cancelQuery() {
-  // Deliberately outside `guard`: cancelling must neither set the busy flag
-  // nor clear the error banner of the running query.
+/**
+ * Deliberately outside `guard`: cancelling must neither set the busy flag
+ * nor clear the error banner of the running operation. One method per kind:
+ * stopping the AI must not stop a query, and vice versa.
+ */
+async function cancel(method: 'query.cancel' | 'ai.cancel') {
   try {
-    await call<{ cancelled: boolean }>('query.cancel')
+    await call<{ cancelled: boolean }>(method)
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
   }
@@ -300,16 +406,28 @@ async function applyFilter(payload: { cubeField: string; level: string; keys: st
  * round trips as cells crossed.
  */
 let followTimer: number | undefined
+/**
+ * A table change seen during the batching window must survive the cell
+ * moves that follow it: click into table B then press an arrow key within
+ * 250 ms, and the last event alone says "same table".
+ */
+let pendingFull = false
 
 function onPivotChanged(payload: Record<string, unknown>) {
-  const full = payload.pivotChanged === true
+  pendingFull ||= payload.pivotChanged === true
   window.clearTimeout(followTimer)
   followTimer = window.setTimeout(() => {
+    const full = pendingFull
+    pendingFull = false
     if (full) void loadContext()
     // Provenance follows the cell: reloading it only makes sense if the tab
     // is visible, otherwise we would query the server for nothing.
     else if (tab.value === 'provenance') void describeCell()
   }, 250)
+}
+
+function showTab(target: unknown) {
+  if (typeof target === 'string' && TABS.includes(target as Tab)) tab.value = target as Tab
 }
 
 let unsubscribe: (() => void) | undefined
@@ -326,12 +444,13 @@ onMounted(() => {
 
   // Excel's context menu asks for a specific tab: without this subscription,
   // "D'où vient ce chiffre ?" opened the pane without going to that tab.
-  unsubscribeTab = onEvent('showTab', payload => {
-    const target = payload.tab
-    if (typeof target === 'string' && TABS.includes(target as Tab)) {
-      tab.value = target as Tab
-    }
-  })
+  unsubscribeTab = onEvent('showTab', payload => showTab(payload.tab))
+
+  // The same request may have been made before this page was ready to
+  // listen (first opening of the pane): the host parked it.
+  void call<{ tab: string | null }>('pane.takeTab')
+    .then(r => showTab(r.tab))
+    .catch(() => { /* not critical: the pane opens on its default tab */ })
 
   // The AI depends only on the environment: we query its status once,
   // so the panel degrades cleanly up front rather than on use.
@@ -348,9 +467,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="error" class="banner">
+  <div v-if="error" class="banner" role="alert">
     <span style="flex: 1">{{ error }}</span>
-    <button :title="t('app.hide')" @click="error = null">×</button>
+    <button :title="t('app.hide')" :aria-label="t('app.hide')" @click="error = null">×</button>
   </div>
 
   <!-- Permanent header: you always know what you are acting on, whichever
@@ -358,14 +477,17 @@ onBeforeUnmount(() => {
        a whole tab for three lines you want to see all the time. -->
   <PivotHeader :context="context" :busy="busyContext" @refresh="loadContext" />
 
-  <nav class="tabs">
-    <button :class="{ active: tab === 'tableau' }" @click="tab = 'tableau'">{{ t('tabs.table') }}</button>
-    <button :class="{ active: tab === 'requete' }" @click="tab = 'requete'">{{ t('tabs.query') }}</button>
-    <button :class="{ active: tab === 'calculs' }" @click="tab = 'calculs'">{{ t('tabs.calc') }}</button>
-    <button :class="{ active: tab === 'provenance' }" @click="tab = 'provenance'">
-      {{ t('tabs.provenance') }}
+  <nav class="tabs" role="tablist">
+    <button
+      v-for="item in tabItems"
+      :key="item.id"
+      role="tab"
+      :aria-selected="tab === item.id"
+      :class="{ active: tab === item.id }"
+      @click="tab = item.id"
+    >
+      {{ item.label }}
     </button>
-    <button :class="{ active: tab === 'ia' }" @click="tab = 'ia'">{{ t('tabs.ai') }}</button>
   </nav>
 
   <main class="body">
@@ -406,9 +528,11 @@ onBeforeUnmount(() => {
       <QueryPanel
         ref="queryPanel"
         :context="context"
+        :connection="lastOlap"
         :busy="busyQuery"
         @run="runQuery"
-        @cancel="cancelQuery"
+        @confirm-write="confirmWrite"
+        @cancel="cancel('query.cancel')"
       />
 
       <details>
@@ -451,7 +575,7 @@ onBeforeUnmount(() => {
         :seed="aiSeed"
         :busy="busyAi"
         @run="runAi"
-        @cancel="cancelQuery"
+        @cancel="cancel('ai.cancel')"
       />
     </div>
 

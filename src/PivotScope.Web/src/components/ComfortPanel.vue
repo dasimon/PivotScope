@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { describeDiagnostic } from '../diagnostic'
 import type { FieldVisibility, LevelVisibility, PivotContext } from '../types'
 
 const props = defineProps<{
@@ -69,6 +70,25 @@ const shown = computed(() => {
 })
 
 const hiddenCount = computed(() => props.fields.filter(f => !f.shownInFieldList).length)
+
+/**
+ * For a checkbox that mirrors Excel's real state: the click is sent as a
+ * request, and the box goes back to the known state until the answer comes.
+ * Left as clicked, a failed request would leave it showing a state that is
+ * not Excel's — Vue does not re-render a property whose value did not change.
+ */
+function request(event: Event, known: boolean): boolean {
+  const box = event.target as HTMLInputElement
+  const wanted = box.checked
+  box.checked = known
+  return wanted
+}
+
+function areaLabel(area: string | null): string {
+  return area === 'row' || area === 'column' || area === 'filter' || area === 'data'
+    ? t(`areas.${area}`)
+    : area ?? ''
+}
 </script>
 
 <template>
@@ -76,7 +96,7 @@ const hiddenCount = computed(() => props.fields.filter(f => !f.shownInFieldList)
     <h2>{{ t('comfort.title') }}</h2>
 
     <p v-if="!context?.isOlap" class="notice">
-      {{ context?.diagnostic ?? t('common.noPivot') }}
+      {{ describeDiagnostic(context, t) }}
     </p>
 
     <template v-else>
@@ -86,7 +106,7 @@ const hiddenCount = computed(() => props.fields.filter(f => !f.shownInFieldList)
           style="width: auto"
           :checked="!autoRefresh"
           :disabled="busy"
-          @change="$emit('setAutoRefresh', !($event.target as HTMLInputElement).checked)"
+          @change="$emit('setAutoRefresh', !request($event, !autoRefresh))"
         />
         {{ t('comfort.defer') }}
       </label>
@@ -114,7 +134,7 @@ const hiddenCount = computed(() => props.fields.filter(f => !f.shownInFieldList)
         >
           <option value="">{{ t('common.choose') }}</option>
           <option v-for="f in laidOutFields" :key="f.name" :value="f.name">
-            {{ f.caption }} ({{ f.area }})
+            {{ f.caption }} ({{ areaLabel(f.area) }})
           </option>
         </select>
       </label>
@@ -187,11 +207,11 @@ const hiddenCount = computed(() => props.fields.filter(f => !f.shownInFieldList)
                 :disabled="busy"
                 @change="$emit('toggleField', {
                   cubeField: f.name,
-                  visible: ($event.target as HTMLInputElement).checked,
+                  visible: request($event, f.shownInFieldList),
                 })"
               />
               <span :class="{ muted: !f.shownInFieldList }">{{ f.caption }}</span>
-              <span v-if="f.area" class="leaf">{{ f.area }}</span>
+              <span v-if="f.area" class="leaf">{{ areaLabel(f.area) }}</span>
             </label>
           </li>
         </ul>

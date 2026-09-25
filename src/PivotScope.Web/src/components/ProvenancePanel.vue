@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import MdxEditor from './MdxEditor.vue'
 import DependencyTree from './DependencyTree.vue'
+import { describeDiagnostic } from '../diagnostic'
 import type { CellProvenance, PivotContext } from '../types'
 
 defineProps<{
@@ -28,7 +29,7 @@ defineEmits<{
     </div>
 
     <p v-if="!context?.isOlap" class="notice">
-      {{ context?.diagnostic ?? t('common.noPivot') }}
+      {{ describeDiagnostic(context, t) }}
     </p>
 
     <p v-else-if="!provenance" class="notice">

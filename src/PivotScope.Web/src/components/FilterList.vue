@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { describeDiagnostic } from '../diagnostic'
 import type { CubeMeta, FilterListResult, PivotContext } from '../types'
 
 const props = defineProps<{
@@ -21,6 +22,13 @@ const level = ref('')
 const keys = ref('')
 const result = ref<FilterListResult | null>(null)
 
+// A level belongs to ONE field: kept across a field change, it would still
+// enable "Apply" and send the members of the previous field to the new one.
+watch(cubeField, () => {
+  level.value = ''
+  result.value = null
+})
+
 /** Only fields laid out on the PivotTable can be filtered. */
 const filterableFields = computed(() =>
   (props.context?.fields ?? []).filter(f => f.area !== 'data'),
@@ -37,19 +45,22 @@ const levels = computed(() => {
   return []
 })
 
-const keyCount = computed(
-  () =>
-    keys.value
-      .split(/[\r\n\t;,]+/)
-      .map(k => k.trim())
-      .filter(Boolean).length,
-)
+/**
+ * Same rule as MemberResolver.ParseKeys on the host: a multi-line paste is
+ * split on lines and tabs only — "Actions, Europe" stays one caption —
+ * while a single typed line is split on commas and semicolons.
+ */
+const keyCount = computed(() => {
+  const separators = /[\r\n\t]/.test(keys.value) ? /[\r\n\t]+/ : /[;,]+/
+  return keys.value.split(separators).map(k => k.trim()).filter(Boolean).length
+})
 
 const canApply = computed(
   () => !props.busy && cubeField.value !== '' && level.value !== '' && keyCount.value > 0,
 )
 
 function apply() {
+  if (!canApply.value) return
   result.value = null
   emit('apply', { cubeField: cubeField.value, level: level.value, keys: keys.value })
 }
@@ -57,6 +68,12 @@ function apply() {
 defineExpose({
   setResult(value: FilterListResult) {
     result.value = value
+  },
+  /** Another PivotTable: its fields are not this one's. The pasted list stays. */
+  reset() {
+    cubeField.value = ''
+    level.value = ''
+    result.value = null
   },
 })
 </script>
@@ -66,7 +83,7 @@ defineExpose({
     <h2>{{ t('filter.title') }}</h2>
 
     <p v-if="!context?.isOlap" class="notice">
-      {{ context?.diagnostic ?? t('common.noPivot') }}
+      {{ describeDiagnostic(context, t) }}
     </p>
 
     <template v-else>
@@ -75,7 +92,7 @@ defineExpose({
         <select v-model="cubeField">
           <option value="">{{ t('common.choose') }}</option>
           <option v-for="f in filterableFields" :key="f.uniqueName" :value="f.uniqueName">
-            {{ f.caption }} ({{ f.area }})
+            {{ f.caption }} ({{ t(`areas.${f.area}`) }})
           </option>
         </select>
       </label>
@@ -107,8 +124,10 @@ defineExpose({
         </button>
       </div>
 
-      <div v-if="result" class="stack">
+      <div v-if="result" class="stack" aria-live="polite">
         <p><strong>{{ t('filter.applied', { count: result.applied }) }}</strong></p>
+
+        <p v-if="result.truncated" class="notice">{{ t('filter.truncated') }}</p>
 
         <template v-if="result.unresolved.length">
           <p class="muted">{{ t('filter.unresolved', { count: result.unresolved.length }) }}</p>

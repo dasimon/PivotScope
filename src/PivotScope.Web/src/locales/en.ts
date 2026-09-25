@@ -8,6 +8,36 @@ const en: typeof fr = {
     notHosted: "This page must be opened from Excel's PivotScope pane.",
     hide: 'Hide',
     language: 'Language',
+    bridgeUnavailable: 'The bridge is not available: open the pane from Excel.',
+    bridgeTimeout:
+      'Excel did not answer in time. A cell may be in edit mode: confirm or cancel ' +
+      'the entry, then try again.',
+    unknownError: 'Unknown error.',
+  },
+
+  diagnostic: {
+    noPivot: 'Place the cursor inside a PivotTable.',
+    notOlap:
+      'This PivotTable is not connected to an OLAP cube. PivotScope only supports ' +
+      'SSAS Multidimensional.',
+    powerPivot:
+      "This PivotTable is based on the workbook's Data Model (Power Pivot). " +
+      'PivotScope only supports SSAS Multidimensional.',
+    connectionUnreadable:
+      "This PivotTable's connection could not be read (server or catalog missing). " +
+      "Check the workbook's connection.",
+  },
+
+  areas: {
+    row: 'row',
+    column: 'column',
+    filter: 'filter',
+    data: 'values',
+  },
+
+  completion: {
+    measure: 'measure',
+    member: 'member',
   },
 
   tabs: {
@@ -24,7 +54,6 @@ const en: typeof fr = {
     loading: 'Loading…',
     refresh: 'Refresh',
     reading: 'Reading…',
-    apply: 'Apply',
     applying: 'Applying…',
     stop: 'Stop',
     copy: 'Copy',
@@ -32,7 +61,6 @@ const en: typeof fr = {
     remove: 'Delete',
     choose: '— choose —',
     noPivot: 'No OLAP PivotTable is active.',
-    placeCursor: 'Place the cursor inside a PivotTable.',
   },
 
   header: {
@@ -78,6 +106,10 @@ const en: typeof fr = {
     ambiguous:
       '{count} caption(s) borne by several members — not applied, paste the key to ' +
       'disambiguate:',
+    truncated:
+      'The level has more than 50,000 members: the caption lookup only saw the ' +
+      'first 50,000. A caption found once may exist further down — prefer keys for ' +
+      'this level.',
   },
 
   query: {
@@ -89,6 +121,20 @@ const en: typeof fr = {
     template: 'Template',
     cancelled: 'Query stopped.',
     written: '{rows} row(s) × {columns} column(s) written in {ms} ms.',
+    target: 'Server: {server} — catalog: {catalog}',
+    noConnection:
+      'Place the cursor once inside an OLAP PivotTable: PivotScope reads the server ' +
+      'and catalog there, then you can pick any destination cell.',
+    activeCellHint:
+      'The result is written from the cell that is active when the query starts. ' +
+      'A cell inside a PivotTable is refused.',
+    overwrite:
+      'The range {address} already holds data. Overwriting it is final: Excel ' +
+      'cannot undo (Ctrl+Z) a write made by an add-in.',
+    overwriteConfirm: 'Overwrite',
+    writeNewSheet: 'New sheet',
+    discard: 'Discard',
+    discarded: 'Result discarded, nothing was written.',
   },
 
   calc: {
@@ -103,14 +149,22 @@ const en: typeof fr = {
     displayFolder: 'Display folder',
     displayFolderPlaceholder: 'Profitability (optional)',
     numberFormat: 'Number format',
-    numberFormatPlaceholder: '#,##0.00 (optional)',
+    numberFormatDefault: 'Default',
+    numberFormatNumber: 'Number',
+    numberFormatPercent: 'Percentage',
     numberFormatHint:
       'Excel exposes no interface for formatting a calculated member — only a ' +
-      'macro can. PivotScope does it here.',
+      'macro can, and only with these three formats.',
     expression: 'MDX expression',
     solveOrder: 'Solve order',
     addToPivot: 'Add to the table once created',
-    create: 'Create / replace',
+    create: 'Create',
+    replace: 'Replace',
+    replaceConfirm: 'Replace "{name}"?',
+    removeConfirm: 'Remove?',
+    kindMeasureShort: 'measure',
+    kindMemberShort: 'member',
+    kindSetShort: 'set',
     saveToLibrary: 'Save to library',
     onThisTable: 'On this table',
     none: 'No calculation on this table.',
@@ -159,6 +213,9 @@ const en: typeof fr = {
     antiPatternsHint: 'Which MDX pitfalls does it contain?',
     format: 'Format',
     formatHint: 'Rewrite it readably.',
+    restorePrevious: 'Back to the previous MDX',
+    copyCode: 'Copy',
+    copied: 'Copied',
   },
 
   comfort: {

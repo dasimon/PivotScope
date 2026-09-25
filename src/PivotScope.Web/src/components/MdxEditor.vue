@@ -23,7 +23,12 @@ onMounted(() => {
   editor = monaco.editor.create(host.value, {
     value: props.modelValue,
     language: 'mdx',
-    theme: 'vs-dark',
+    // The theme defined with the Monarch grammar: 'vs-dark' left the
+    // [identifiers] and the functions uncoloured.
+    theme: 'cubescope-dark',
+    // The editors are short and their container clips: without this the
+    // suggestion list and the hovers are cut off.
+    fixedOverflowWidgets: true,
     readOnly: props.readonly,
     automaticLayout: true,
     minimap: { enabled: false },

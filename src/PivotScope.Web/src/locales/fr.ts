@@ -8,6 +8,36 @@ export default {
     notHosted: "Cette page doit être ouverte depuis le volet PivotScope d'Excel.",
     hide: 'Masquer',
     language: 'Langue',
+    bridgeUnavailable: "Le pont n'est pas disponible : ouvrez le volet depuis Excel.",
+    bridgeTimeout:
+      "Excel n'a pas répondu à temps. Une cellule est peut-être en cours de " +
+      'modification : validez ou annulez la saisie, puis réessayez.',
+    unknownError: 'Erreur inconnue.',
+  },
+
+  diagnostic: {
+    noPivot: 'Placez le curseur dans un tableau croisé dynamique.',
+    notOlap:
+      "Ce tableau croisé dynamique n'est pas connecté à un cube OLAP. PivotScope " +
+      'ne prend en charge que SSAS Multidimensional.',
+    powerPivot:
+      'Ce tableau croisé dynamique repose sur le modèle de données du classeur ' +
+      '(Power Pivot). PivotScope ne prend en charge que SSAS Multidimensional.',
+    connectionUnreadable:
+      "La connexion de ce tableau croisé dynamique n'a pas pu être lue (serveur ou " +
+      'catalogue absent). Vérifiez la connexion du classeur.',
+  },
+
+  areas: {
+    row: 'ligne',
+    column: 'colonne',
+    filter: 'filtre',
+    data: 'valeurs',
+  },
+
+  completion: {
+    measure: 'mesure',
+    member: 'membre',
   },
 
   tabs: {
@@ -24,7 +54,6 @@ export default {
     loading: 'Chargement…',
     refresh: 'Actualiser',
     reading: 'Lecture…',
-    apply: 'Appliquer',
     applying: 'Application…',
     stop: 'Arrêter',
     copy: 'Copier',
@@ -32,7 +61,6 @@ export default {
     remove: 'Supprimer',
     choose: '— choisir —',
     noPivot: 'Aucun tableau croisé dynamique OLAP actif.',
-    placeCursor: 'Placez le curseur dans un tableau croisé dynamique.',
   },
 
   header: {
@@ -81,6 +109,10 @@ export default {
     ambiguous:
       '{count} libellé(s) porté(s) par plusieurs membres — non appliqué(s), collez ' +
       'la clé pour lever le doute :',
+    truncated:
+      'Le niveau compte plus de 50 000 membres : la recherche par libellé n’en a vu ' +
+      'que les 50 000 premiers. Un libellé trouvé une fois peut exister plus loin — ' +
+      'préférez les clés pour ce niveau.',
   },
 
   query: {
@@ -92,6 +124,21 @@ export default {
     template: 'Modèle',
     cancelled: 'Requête arrêtée.',
     written: '{rows} ligne(s) × {columns} colonne(s) écrites en {ms} ms.',
+    target: 'Serveur : {server} — catalogue : {catalog}',
+    noConnection:
+      'Placez une fois le curseur dans un tableau croisé dynamique OLAP : PivotScope ' +
+      'y découvre le serveur et le catalogue, puis vous pouvez choisir librement la ' +
+      'cellule de destination.',
+    activeCellHint:
+      'Le résultat sera écrit à partir de la cellule active au moment du lancement. ' +
+      'Une cellule appartenant à un tableau croisé dynamique est refusée.',
+    overwrite:
+      'La plage {address} contient déjà des données. Les écraser est définitif : ' +
+      'Excel ne permet pas d’annuler (Ctrl+Z) une écriture faite par un complément.',
+    overwriteConfirm: 'Écraser',
+    writeNewSheet: 'Nouvelle feuille',
+    discard: 'Abandonner',
+    discarded: 'Résultat abandonné, rien n’a été écrit.',
   },
 
   calc: {
@@ -106,14 +153,22 @@ export default {
     displayFolder: 'Dossier d’affichage',
     displayFolderPlaceholder: 'Rentabilité (facultatif)',
     numberFormat: 'Format de nombre',
-    numberFormatPlaceholder: '#,##0.00 (facultatif)',
+    numberFormatDefault: 'Par défaut',
+    numberFormatNumber: 'Nombre',
+    numberFormatPercent: 'Pourcentage',
     numberFormatHint:
       'Excel ne propose aucune interface pour formater un membre calculé — seule ' +
-      'une macro peut le faire. PivotScope le fait ici.',
+      'une macro peut le faire, et seulement parmi ces trois formats.',
     expression: 'Expression MDX',
     solveOrder: 'Ordre de résolution',
     addToPivot: 'Ajouter au tableau après création',
-    create: 'Créer / remplacer',
+    create: 'Créer',
+    replace: 'Remplacer',
+    replaceConfirm: 'Remplacer « {name} » ?',
+    removeConfirm: 'Supprimer ?',
+    kindMeasureShort: 'mesure',
+    kindMemberShort: 'membre',
+    kindSetShort: 'ensemble',
     saveToLibrary: 'Enregistrer dans la bibliothèque',
     onThisTable: 'Sur ce tableau',
     none: 'Aucun calcul sur ce tableau.',
@@ -163,6 +218,9 @@ export default {
     antiPatternsHint: 'Quels pièges MDX s’y trouvent ?',
     format: 'Formater',
     formatHint: 'La réécrire lisiblement.',
+    restorePrevious: 'Revenir au MDX précédent',
+    copyCode: 'Copier',
+    copied: 'Copié',
   },
 
   comfort: {

@@ -9,6 +9,7 @@
 import { monaco } from './monaco-mdx'
 import { mdxFunctions } from './mdxFunctions'
 import { call } from './bridge'
+import { i18n } from './i18n'
 import type { CubeMeta, MemberMeta } from './types'
 
 const KEYWORDS = [
@@ -18,6 +19,10 @@ const KEYWORDS = [
 ]
 
 const MEASURES_PREFIX = '[Measures]'
+
+/** Detail labels follow the pane's language, read at completion time. */
+const tr = (key: string, values?: Record<string, unknown>) =>
+  values ? i18n.global.t(key, values) : i18n.global.t(key)
 
 let meta: CubeMeta | null = null
 const memberCache = new Map<string, MemberMeta[]>()
@@ -115,7 +120,7 @@ export function registerMdxCompletion(): void {
               measure.uniqueName.startsWith(MEASURES_PREFIX + '.')
                 ? measure.uniqueName.slice(MEASURES_PREFIX.length + 1)
                 : `[${measure.name}]`,
-              K.Field, rangeFor, folder.folder || 'mesure', measure.description))
+              K.Field, rangeFor, folder.folder || tr('completion.measure'), measure.description))
         return { suggestions }
       }
 
@@ -130,7 +135,7 @@ export function registerMdxCompletion(): void {
             m.uniqueName.startsWith(hierarchy + '.')
               ? m.uniqueName.slice(hierarchy.length + 1)
               : m.uniqueName,
-            K.Value, rangeFor, 'membre', m.uniqueName)),
+            K.Value, rangeFor, tr('completion.member'), m.uniqueName)),
         }
       }
 
@@ -154,7 +159,7 @@ export function registerMdxCompletion(): void {
       for (const folder of meta?.measureFolders ?? [])
         for (const measure of folder.measures)
           suggestions.push(item(measure.uniqueName, measure.uniqueName, K.Field, rangeFor,
-                                folder.folder || 'mesure', measure.description, '1'))
+                                folder.folder || tr('completion.measure'), measure.description, '1'))
 
       for (const dimension of meta?.dimensions ?? [])
         for (const hierarchy of dimension.hierarchies) {
@@ -162,7 +167,7 @@ export function registerMdxCompletion(): void {
                                 dimension.name, hierarchy.description, '2'))
           for (const level of hierarchy.levels)
             suggestions.push(item(level.uniqueName, level.uniqueName, K.Property, rangeFor,
-                                  `niveau ${level.number}`, undefined, '3'))
+                                  tr('metadata.level', { number: level.number }), undefined, '3'))
         }
 
       for (const [name, doc] of Object.entries(mdxFunctions))

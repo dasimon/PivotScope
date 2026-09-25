@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MdxEditor from './MdxEditor.vue'
+import { describeDiagnostic } from '../diagnostic'
 import type {
   CalculationKind, CubeMeta, ExistingCalculation, PivotContext, StoredCalculation,
 } from '../types'
@@ -64,8 +65,46 @@ const canApply = computed(
     (!isMember.value || draft.value.parentHierarchy !== ''),
 )
 
+/** Unique name the draft will get, as the host computes it (CalculationValidator). */
+const draftUniqueName = computed(() => {
+  const name = draft.value.name.trim()
+  if (draft.value.kind === 'Measure') return `[Measures].[${name}]`
+  if (draft.value.kind === 'Set') return `[${name}]`
+  return `${draft.value.parentHierarchy}.[${name}]`
+})
+
+/** Creating over an existing calculation replaces it: that deserves a confirmation. */
+const replaces = computed(() =>
+  props.calculations.some(c => c.name.toLowerCase() === draftUniqueName.value.toLowerCase()),
+)
+
+/**
+ * Two-click confirmation for what cannot be undone: the first click arms the
+ * button (its label asks "Confirm?"), the second acts. A dialog box would be
+ * the other option, and the pane has none by design.
+ */
+const armed = ref<string | null>(null)
+let disarmTimer: number | undefined
+
+function confirmThen(key: string, action: () => void) {
+  window.clearTimeout(disarmTimer)
+  if (armed.value === key) {
+    armed.value = null
+    action()
+    return
+  }
+  armed.value = key
+  disarmTimer = window.setTimeout(() => { armed.value = null }, 4000)
+}
+
+onBeforeUnmount(() => window.clearTimeout(disarmTimer))
+
 function apply() {
-  emit('apply', { ...draft.value, addToPivot: addToPivot.value })
+  // F5 in the editor lands here too: it must obey the same rules as the button.
+  if (!canApply.value) return
+  const send = () => emit('apply', { ...draft.value, addToPivot: addToPivot.value })
+  if (replaces.value) confirmThen('apply', send)
+  else send()
 }
 
 function load(stored: StoredCalculation) {
@@ -74,10 +113,27 @@ function load(stored: StoredCalculation) {
     expression: stored.definition.expression,
     kind: stored.definition.kind,
     displayFolder: stored.definition.displayFolder ?? '',
-    numberFormat: stored.definition.numberFormat ?? '',
+    numberFormat: normalizeFormat(stored.definition.numberFormat),
     parentHierarchy: stored.definition.parentHierarchy ?? '',
     solveOrder: stored.definition.solveOrder,
   }
+}
+
+/**
+ * Earlier releases stored free text ("0.00%", "#,##0.00"). Excel only knows
+ * three formats for a calculated member: read the old text by intent, as the
+ * host does (CalculationNumberFormat).
+ */
+function normalizeFormat(format: string | null): string {
+  if (!format || format === 'default') return ''
+  if (format === 'number' || format === 'percent') return format
+  return format.includes('%') ? 'percent' : 'number'
+}
+
+function kindLabel(kind: string): string {
+  if (kind === 'Measure') return t('calc.kindMeasureShort')
+  if (kind === 'Set') return t('calc.kindSetShort')
+  return t('calc.kindMemberShort')
 }
 </script>
 
@@ -86,7 +142,7 @@ function load(stored: StoredCalculation) {
     <h2>{{ t('calc.title') }}</h2>
 
     <p v-if="!context?.isOlap" class="notice">
-      {{ context?.diagnostic ?? t('common.noPivot') }}
+      {{ describeDiagnostic(context, t) }}
     </p>
 
     <template v-else>
@@ -120,9 +176,15 @@ function load(stored: StoredCalculation) {
       </label>
 
       <template v-if="isMember">
+        <!-- Excel's NumberFormat for a calculated member is an enumeration
+             (default / number / percent), not a format string. -->
         <label>
           {{ t('calc.numberFormat') }}
-          <input v-model="draft.numberFormat" :placeholder="t('calc.numberFormatPlaceholder')" />
+          <select v-model="draft.numberFormat">
+            <option value="">{{ t('calc.numberFormatDefault') }}</option>
+            <option value="number">{{ t('calc.numberFormatNumber') }}</option>
+            <option value="percent">{{ t('calc.numberFormatPercent') }}</option>
+          </select>
         </label>
         <p class="muted">{{ t('calc.numberFormatHint') }}</p>
       </template>
@@ -145,9 +207,14 @@ function load(stored: StoredCalculation) {
         {{ t('calc.addToPivot') }}
       </label>
 
-      <div class="row">
-        <button :disabled="!canApply" @click="apply">
-          {{ busy ? t('common.applying') : t('calc.create') }}
+      <div class="row wrap">
+        <button :class="{ danger: armed === 'apply' }" :disabled="!canApply" @click="apply">
+          {{
+            busy ? t('common.applying')
+            : armed === 'apply' ? t('calc.replaceConfirm', { name: draft.name.trim() })
+            : replaces ? t('calc.replace')
+            : t('calc.create')
+          }}
         </button>
         <button class="secondary" :disabled="!canApply" @click="$emit('save', draft)">
           {{ t('calc.saveToLibrary') }}
@@ -165,12 +232,16 @@ function load(stored: StoredCalculation) {
       <ul v-else class="tree" style="padding-left: 0; list-style: none">
         <li v-for="c in calculations" :key="c.name">
           <div class="row">
-            <span style="flex: 1">
+            <span style="flex: 1; min-width: 0" class="wrap-text">
               {{ c.name }}
-              <span class="leaf">{{ c.kind }}{{ c.isValid ? '' : ' — ' + t('calc.invalid') }}</span>
+              <span class="leaf">{{ kindLabel(c.kind) }}{{ c.isValid ? '' : ' — ' + t('calc.invalid') }}</span>
             </span>
-            <button class="danger" :disabled="busy" @click="$emit('remove', c.name)">
-              {{ t('common.remove') }}
+            <button
+              class="danger"
+              :disabled="busy"
+              @click="confirmThen(`calc:${c.name}`, () => emit('remove', c.name))"
+            >
+              {{ armed === `calc:${c.name}` ? t('calc.removeConfirm') : t('common.remove') }}
             </button>
           </div>
           <div class="leaf">{{ c.formula }}</div>
@@ -188,13 +259,17 @@ function load(stored: StoredCalculation) {
       <ul v-else class="tree" style="padding-left: 0; list-style: none">
         <li v-for="s in library" :key="s.id">
           <div class="row">
-            <span style="flex: 1">
+            <span style="flex: 1; min-width: 0" class="wrap-text">
               {{ s.definition.name }}
               <span class="leaf">{{ s.cube ?? t('calc.allCubes') }}</span>
             </span>
             <button class="secondary" :disabled="busy" @click="load(s)">{{ t('common.load') }}</button>
-            <button class="danger" :disabled="busy" @click="$emit('removeFromLibrary', s.id)">
-              {{ t('common.remove') }}
+            <button
+              class="danger"
+              :disabled="busy"
+              @click="confirmThen(`lib:${s.id}`, () => emit('removeFromLibrary', s.id))"
+            >
+              {{ armed === `lib:${s.id}` ? t('calc.removeConfirm') : t('common.remove') }}
             </button>
           </div>
         </li>

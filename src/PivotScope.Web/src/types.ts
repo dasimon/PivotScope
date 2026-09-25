@@ -15,6 +15,10 @@ export type PivotContext = {
   mdx: string | null
   fields: PivotFieldInfo[]
   diagnostic: string | null
+  /** Workbook + sheet + name: tells one PivotTable from another. */
+  pivotKey: string | null
+  /** Stable code of `diagnostic`, translated by the pane. */
+  diagnosticCode: 'noPivot' | 'notOlap' | 'powerPivot' | 'connectionUnreadable' | null
 }
 
 export type LevelMeta = { name: string; uniqueName: string; number: number }
@@ -114,15 +118,25 @@ export type FieldVisibility = {
 export type QueryRunResult = {
   /** True if the user stopped the query: this is not an error. */
   cancelled: boolean
+  /** The destination holds data: nothing written yet, the user decides. */
+  pendingOverwrite: boolean
   address: string
   rows: number
   columns: number
   durationMs: number
+  server: string
+  catalog: string
 }
+
+export type WriteMode = 'overwrite' | 'newSheet' | 'discard'
+
+export type ConfirmWriteResult = { written: boolean; address: string }
 
 export type FilterListResult = {
   applied: number
   unresolved: string[]
   /** Captions borne by several members: deliberately left unresolved. */
   ambiguous: string[]
+  /** The caption lookup only saw the first members of the level. */
+  truncated: boolean
 }
