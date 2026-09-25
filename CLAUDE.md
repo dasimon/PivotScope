@@ -83,6 +83,24 @@ code reuse**: PivotScope is MIT-licensed.
 - `PivotTable.MDX` throws if the PivotTable has no data item.
 - `PivotCell.MDX` throws outside the values area and on a multi-select report
   filter.
+- **`AddCalculatedMember`'s `NumberFormat` is an enumeration**,
+  `XlCalcMemNumberFormatType` (Default = 0, Number = 1, Percent = 2 —
+  learn.microsoft.com/office/vba/api/excel.xlcalcmemnumberformattype), **not a
+  format string**. A "#,##0.00" typed by the user was passed as is until the
+  2026-09-24 review. `CalculationNumberFormat` maps it.
+- **Excel names the first PivotTable of every sheet "PivotTable1"**: the name
+  alone identifies nothing. `PivotLocator` keys on workbook + sheet + name, and
+  a long operation (list filter) resolves its PivotTable by that key, not by
+  the cursor.
+- **A `CustomTaskPane` belongs to one window.** Since Excel 2013 each workbook
+  has its own: `PaneManager` keeps one pane per window handle and drops the
+  panes whose window is gone (any access throws).
+- **A `CommandBarButton` kept in a local variable loses its `Click`** once the
+  garbage collector reclaims the wrapper: the entry stays displayed and does
+  nothing. `ContextMenu` keeps them in a static list.
+- **Anything written through COM empties Excel's undo stack.** Hence the
+  checks before writing a query result, and the confirmation when the
+  destination is not empty.
 - `CubeFields.GetMeasure` **is not** for displaying a calculated measure: it
   only concerns the implicit measures of an attribute hierarchy, and only
   for Count/Sum/Average/Max/Min. Use `AddDataField(cubeField, …)`.
@@ -99,6 +117,17 @@ code reuse**: PivotScope is MIT-licensed.
   enumerating a level only costs ~79 ms for 3,157 members.
 - A caption carried by **several** members is reported as ambiguous, never
   resolved at random: filtering on the wrong member would produce a wrong figure.
+- **A pasted list is split on lines and tabs only** when it has several lines:
+  captions contain commas ("Actions, Europe"). Commas and semicolons only
+  separate values on a single typed line.
+- **CubeScope's `QueryService` returns FORMATTED values** ("1 234,56 €"), made
+  for a grid on screen. Written to a sheet they stay text and Excel may re-read
+  them in its own locale. `CubeScopeSession.ExecuteAsync` maps the CellSet
+  itself with raw `Cell.Value`; a cell in error becomes a `CellError`
+  (`#VALUE!` in the sheet), never the text "#ERREUR".
+- **One SSAS connection serves one command at a time**: a free query gets its
+  own connection (`SessionLane.Query`), otherwise completion, the explorer and
+  provenance wait behind it for minutes.
 
 ### Front end
 

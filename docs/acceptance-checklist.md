@@ -219,6 +219,91 @@ noticed on download.
 - [ ] The ribbon and the context menu follow **Excel**'s language, not the
       pane's: this is the accepted trade-off, the ribbon is built only once
 
+## Code review fixes (unreleased)
+
+Behaviours changed after the full code review of 2026-09-24. Each one
+depends on Excel and could only be reasoned about, not run: check them here.
+
+### Free query → sheet
+
+- [ ] A query returning numbers writes **numbers**: `=SUM()` over the result
+      is not 0, and a French-formatted value is not re-read as another number
+- [ ] A key such as `0012` keeps its zeros; a caption starting with `=` stays
+      text (the leading apostrophe does not show in the cell)
+- [ ] A cell in error is written as **#VALUE!**, not as the text `#ERREUR`
+- [ ] Known trade-off: numbers arrive **unformatted** (a percentage shows as
+      0.125) — the raw value is the price of a sheet you can calculate on
+- [ ] "Active cell" unticked, start a long query, then click elsewhere: the
+      result lands at the cell that was active **at launch**
+- [ ] Destination not empty: nothing is written, the pane offers
+      **Overwrite / New sheet / Discard**, and each choice does what it says
+- [ ] A result that would overlap a PivotTable, overflow the sheet, or land
+      on a protected sheet is refused with a readable message
+- [ ] The pane shows the **server and catalog** the query will run on
+- [ ] Leave the PivotTable to pick the destination cell: the editor, F5 and
+      completion **stay available**
+- [ ] During a long query, completion and the explorer still answer (second
+      SSAS connection)
+- [ ] Start a query, then "Explain" in the AI tab: each **Stop** button stops
+      its own operation only
+
+### Filter by list
+
+- [ ] A multi-line paste containing `Actions, Europe` filters on that one
+      caption; a single typed line `EUR, USD` still gives two values
+- [ ] Start a filter, click into **another** PivotTable before it ends: the
+      filter lands on the table it was launched from
+- [ ] A rejected list (value from another level): the **previous filter is
+      still there** afterwards, not an unfiltered table
+- [ ] On a report-filter field, a list of several members is applied (multiple
+      selection switched on)
+- [ ] Changing the field resets the level
+
+### Calculations
+
+- [ ] Number format of a calculated member: **Default / Number / Percent**
+      (Excel's `XlCalcMemNumberFormatType`) — Percent really shows a percentage
+- [ ] A library entry saved by 0.5.0 with a format such as `0.00%` loads as
+      Percent
+- [ ] Replace a working measure with a broken expression: the error shows,
+      and the **previous version is still there**, at its place in the values area
+- [ ] A named set is created under `[Name]` and appears in the field list
+- [ ] Remove a calculation, remove a library entry, replace a calculation:
+      each asks for a second click
+- [ ] Two members named `Total` under two hierarchies are two library entries
+
+### Several windows, several tables
+
+- [ ] Two workbooks open: the pane opens in the window it was asked from
+- [ ] Close the workbook that holds the pane, open the pane again from the
+      other: it opens (no restart needed)
+- [ ] Two sheets each with `PivotTable1`, on different cubes: moving from
+      one to the other (click, or Ctrl+PgDn) refreshes header, fields and
+      calculations — nothing from the first table is left
+- [ ] Right-click → "Where does this figure come from?" on a **closed** pane:
+      it opens on that tab
+- [ ] Context menu entries still work after a long session (they no longer
+      depend on the garbage collector)
+
+### Building
+
+- [ ] "Defer layout" toggled from the pane: the ribbon button follows
+- [ ] **To confirm**: toggle "Defer layout", then check in a second action
+      that `ManualUpdate` is still True (Microsoft documents that it resets
+      when the macro ends)
+- [ ] "Apply and refresh" on a table whose refresh is disabled in the
+      workbook: refused with a message, the setting is **not** changed
+
+### Hardening
+
+- [ ] Release build: F12 / devtools unavailable, F5 in the pane does not
+      reload it (F5 in the editor still runs the query)
+- [ ] A PivotTable on the workbook Data Model (Power Pivot) is reported as
+      out of scope
+- [ ] Restart the SSAS service while Excel stays open: the next action
+      reconnects instead of failing until Excel restarts
+- [ ] Protected sheet / cell in edit mode: a readable message, not an HRESULT
+
 ## Unloading
 
 - [ ] Close Excel: "PivotScope unloaded" in the log

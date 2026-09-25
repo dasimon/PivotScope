@@ -3,6 +3,75 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Fixes from a full code review. Items marked *(to confirm)* depend on Excel
+behaviour that could only be reasoned about: see the acceptance checklist.
+
+### Fixed — wrong figures or lost data
+
+- **Filter by list no longer splits captions on commas** when the paste has
+  several lines: `Actions, Europe` could be cut in two and `Europe` resolved to
+  another member — a wrong filter, silently.
+- **Free queries write raw values**, not formatted text: numbers are numbers
+  (a `SUM` no longer gives 0), keys keep their leading zeros, text starting
+  with `=` stays text, and a cell in error becomes `#VALUE!`.
+- **The destination of a free query is fixed at launch**, and a non-empty
+  destination is no longer overwritten without asking (COM writes cannot be
+  undone). Overlapping a PivotTable, overflowing the sheet or a protected
+  sheet are refused up front.
+- **Replacing a calculation keeps the working version** if the new one is
+  rejected, and a shown measure keeps its place in the values area.
+- **A rejected list filter restores the previous filter** instead of leaving
+  the table unfiltered, and the filter lands on the PivotTable it was launched
+  from even if the cursor moved meanwhile.
+- **Named sets** were created as `.[Name]`; they are now `[Name]`.
+- **Number format of a calculated member**: Excel takes an enumeration
+  (default / number / percent), not a format string. The free-text field is
+  replaced by a list; formats saved earlier are read by intent.
+- Member lookup escapes `]`, `'` and the cube name, and a cell in error is no
+  longer taken for a found member.
+- *Where does this figure come from* no longer calls a measure "physical"
+  without checking SCOPE assignments and calculated coordinates.
+- The calculation library no longer overwrites two calculations that only
+  share a name (schema v2, migrated without loss; a newer database is refused).
+
+### Fixed — robustness
+
+- One pane **per Excel window**; a pane whose workbook was closed no longer
+  blocks the add-in until Excel restarts.
+- PivotTables are told apart by workbook + sheet + name, not by name alone
+  (every sheet has a "PivotTable1"); sheet changes by keyboard are followed.
+- The pane drops everything read from a PivotTable when another one is
+  selected, ignores late answers for a previous cube or cell, and no longer
+  loses a table change between two cursor moves.
+- SSAS sessions: one per server/catalog, never closed under a running call,
+  dropped and reopened after a connection error; free queries get their own
+  connection, so completion keeps answering during a long query.
+- Query and AI have separate Stop buttons and tokens.
+- Member completion no longer goes through `$SYSTEM.MDSCHEMA_MEMBERS`.
+- Level enumeration is cancellable, its cache expires, and a truncated level
+  is reported.
+- Bridge calls time out instead of hanging; the host accepts numeric ids.
+- Context menu entries stay alive; the ribbon toggle follows the pane.
+- WebView2: devtools and browser shortcuts off in Release, navigation locked
+  to the embedded SPA, message origin checked.
+- Readable messages for protected sheets and Excel in edit mode; "Apply and
+  refresh" no longer re-enables a refresh the workbook author disabled.
+- Power Pivot PivotTables are reported as out of scope.
+- Log: pruned once a day, capped at 10 MB a day.
+
+### Changed — interface
+
+- Destructive actions ask for a second click.
+- AI answers render numbered lists and tables, and code blocks have a Copy
+  button; an automatic replacement of the AI editor can be undone.
+- Remaining hard-coded French strings, host diagnostics and field areas go
+  through the i18n catalogs.
+- Narrow pane: long names wrap, tabs wrap, completion widgets are no longer
+  clipped; the primary button reaches WCAG AA contrast; error banner and tabs
+  carry ARIA roles.
+
 ## [0.5.0] — 2026-07-29
 
 ### Added
