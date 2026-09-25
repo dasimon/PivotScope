@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import AboutPanel from './AboutPanel.vue'
 import { currentLocale, setLocale, type Locale } from '../i18n'
 import { describeDiagnostic } from '../diagnostic'
 import type { PivotContext } from '../types'
@@ -8,6 +10,9 @@ defineProps<{ context: PivotContext | null; busy: boolean }>()
 defineEmits<{ refresh: [] }>()
 
 const { t } = useI18n()
+
+/** Folded by default: it matters when you look for it, not while you work. */
+const showAbout = ref(false)
 
 function onLocaleChange(event: Event) {
   setLocale((event.target as HTMLSelectElement).value as Locale)
@@ -34,7 +39,19 @@ function onLocaleChange(event: Event) {
       <button class="secondary" :disabled="busy" @click="$emit('refresh')">
         {{ busy ? t('common.reading') : t('common.refresh') }}
       </button>
+
+      <button
+        class="secondary"
+        :title="t('about.title')"
+        :aria-label="t('about.title')"
+        :aria-expanded="showAbout"
+        @click="showAbout = !showAbout"
+      >
+        ?
+      </button>
     </div>
+
+    <AboutPanel v-if="showAbout" />
 
     <p v-if="!context" class="muted">{{ t('header.readingContext') }}</p>
 

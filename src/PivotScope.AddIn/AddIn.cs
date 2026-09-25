@@ -18,7 +18,8 @@ public sealed class PivotScopeAddIn : IExcelAddIn
             // Windows 95 style — the official Excel-DNA sample does it too.
             System.Windows.Forms.Application.EnableVisualStyles();
             Interop.ContextMenu.Install();
-            FileLog.Write($"PivotScope loaded (Excel {ExcelDnaUtil.ExcelVersion}).");
+            FileLog.Write($"PivotScope {AppInfo.Version} ({AppInfo.Commit ?? "no commit"}) " +
+                          $"loaded (Excel {ExcelDnaUtil.ExcelVersion}).");
         }
         catch (Exception ex)
         {

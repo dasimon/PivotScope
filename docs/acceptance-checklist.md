@@ -181,7 +181,9 @@ noticed on download.
 
 - [ ] `pwsh build\pack.ps1` produces `artifacts\PivotScope.zip`
 - [ ] The folder contains **4 useful files**: the `.xll` and three natives
-      under `runtimes\win-x64\native\`
+      under `runtimes\win-x64\native\` — plus README, LICENSE and
+      `THIRD-PARTY-NOTICES.txt`, which lists the NuGet and npm packages with
+      their license texts
 - [ ] Extract the zip into an **isolated** folder, outside the repository — typically
       `%USERPROFILE%\Downloads\PivotScope`
 - [ ] Load `PivotScope64.xll` **from this folder**
@@ -303,6 +305,16 @@ depends on Excel and could only be reasoned about, not run: check them here.
 - [ ] Restart the SSAS service while Excel stays open: the next action
       reconnects instead of failing until Excel restarts
 - [ ] Protected sheet / cell in edit mode: a readable message, not an HRESULT
+
+## About
+
+- [ ] The **?** button of the header unfolds the "About" section, and folds it
+- [ ] The version shown is the one of the loaded `.xll` (compare with the
+      release tag), with the commit next to it
+- [ ] "Source code on GitHub" opens the repository in the **default browser**,
+      not in the pane
+- [ ] The section follows the FR / EN switch
+- [ ] The log line "PivotScope <version> (<commit>) loaded" gives the same version
 
 ## Unloading
 

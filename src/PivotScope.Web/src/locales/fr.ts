@@ -15,6 +15,17 @@ export default {
     unknownError: 'Erreur inconnue.',
   },
 
+  about: {
+    title: 'À propos de PivotScope',
+    tagline: 'Complément Excel pour les développeurs SSAS Multidimensional.',
+    license: 'Logiciel libre sous licence MIT — © 2026 David Simon.',
+    repository: 'Code source sur GitHub',
+    thirdParty: 'Composants tiers',
+    notices:
+      'Les textes complets des licences sont dans THIRD-PARTY-NOTICES.txt, livré à ' +
+      'côté du fichier .xll.',
+  },
+
   diagnostic: {
     noPivot: 'Placez le curseur dans un tableau croisé dynamique.',
     notOlap:

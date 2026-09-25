@@ -1,5 +1,8 @@
 /** Mirror of the records exposed by PivotScope.Core (camelCase serialization). */
 
+/** Version of the loaded add-in, read from its assembly. */
+export type AppInfo = { version: string; commit: string | null; repository: string }
+
 export type PivotFieldInfo = {
   caption: string
   uniqueName: string
