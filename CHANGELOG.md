@@ -3,6 +3,16 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] — 2026-09-25
+
+### Security
+
+- **DOMPurify 3.4.16** (pulled in by Monaco, forced through `overrides`):
+  fixes GHSA-55q2-fjhq-7xh7, an XSS through `IN_PLACE` hook removal. 0.6.0
+  shipped 3.4.12.
+- nanoid updated in the build chain (vite → postcss); it was not part of the
+  shipped add-in.
+
 ## [0.6.0] — 2026-09-25
 
 Fixes from a full code review. Items marked *(to confirm)* depend on Excel
