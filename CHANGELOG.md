@@ -5,6 +5,21 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-11-04
+
+### Changed
+
+- **Visual language shared with CubeScope**: the three faces of the cube as the
+  only chromatic family (emerald), amber for warnings, coral for errors, cool
+  teal-slate backgrounds. Recursive (variable, bundled in the add-in) replaces
+  Segoe UI, with its monospaced axis for unique names, keys and addresses.
+- The header shows the PivotScope mark (emerald when an OLAP PivotTable with a
+  readable connection is under the cursor, outlined otherwise) and the target
+  — server › catalog, then cube and field count — instead of a key/value list.
+- Section titles become quiet text with a short emerald rule; messages carry a
+  left bar that says their kind (nothing to do yet, read before acting, failed);
+  tabs are underlined.
+
 ### Added
 
 - **About** section in the pane (the **?** button of the header): the version
