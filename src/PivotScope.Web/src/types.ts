@@ -3,6 +3,20 @@
 /** Version of the loaded add-in, read from its assembly. */
 export type AppInfo = { version: string; commit: string | null; repository: string }
 
+/** Mirror of CubeScope.Core's UpdateStatus (AddInUpdates). Dates are UTC ISO strings. */
+export type UpdateStatus = {
+  canUpdate: boolean
+  currentVersion: string | null
+  available: { version: string; pageUrl: string; size: number } | null
+  lastCheckUtc: string | null
+  lastError: string | null
+  phase: 'Idle' | 'Checking' | 'Downloading' | 'Installing'
+  progress: number
+}
+
+/** What update.download answers: the verified zip in Downloads, and the folder of the loaded .xll. */
+export type UpdateDownload = { path: string; addInFolder: string | null }
+
 export type PivotFieldInfo = {
   caption: string
   uniqueName: string

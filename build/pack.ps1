@@ -19,7 +19,10 @@
 [CmdletBinding()]
 param(
     [string]$Version,
-    [string]$Configuration = 'Release'
+    [string]$Configuration = 'Release',
+    # 'release' only from release.yml: it is what makes the shipped add-in look for updates
+    # (AssemblyMetadata UpdateChannel). A local pack leaves it empty and never asks GitHub.
+    [string]$Channel
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,8 +43,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'SPA build failed.' }
 
     Write-Host '== Add-in ==' -ForegroundColor Cyan
-    $versionArg = if ($Version) { "-p:Version=$Version" } else { '' }
-    dotnet publish src/PivotScope.AddIn -c $Configuration -p:SkipSpaBuild=true $versionArg
+    $publishArgs = @('-c', $Configuration, '-p:SkipSpaBuild=true')
+    if ($Version) { $publishArgs += "-p:Version=$Version" }
+    if ($Channel) { $publishArgs += "-p:UpdateChannel=$Channel" }
+    dotnet publish src/PivotScope.AddIn @publishArgs
     if ($LASTEXITCODE -ne 0) { throw 'Add-in publish failed.' }
 
     $bin = "src/PivotScope.AddIn/bin/$Configuration/net10.0-windows"
@@ -66,6 +71,11 @@ try {
     if (Test-Path $zip) { Remove-Item $zip -Force }
     Compress-Archive -Path "$out/*" -DestinationPath $zip
 
+    # The checksum the built-in update checks the zip against, in sha256sum's text format
+    # ("<hash>  PivotScope.zip"), ASCII, one line: what CubeScope.Core's Sha256Sums reads.
+    $hash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+    Set-Content -Path "$zip.sha256" -Value "$hash  PivotScope.zip" -Encoding ascii
+
     Write-Host ''
     Write-Host '== Deliverable ==' -ForegroundColor Green
     Get-ChildItem $out -Recurse -File |
@@ -74,6 +84,7 @@ try {
         Format-Table -AutoSize
 
     Write-Host "Zip: $zip" -ForegroundColor Green
+    Write-Host "SHA-256: $hash" -ForegroundColor Green
     Write-Host ''
     Write-Host 'The check that counts: extract this zip into an ISOLATED folder' -ForegroundColor Yellow
     Write-Host '(outside the repository) and load the .xll from there. A deliverable' -ForegroundColor Yellow

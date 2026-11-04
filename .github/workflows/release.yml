@@ -44,12 +44,36 @@ jobs:
 
       - name: Package
         shell: pwsh
-        run: ./build/pack.ps1 -Version ${{ steps.version.outputs.value }}
+        run: ./build/pack.ps1 -Version ${{ steps.version.outputs.value }} -Channel release
+
+      # Without the stamp the shipped add-in never looks for an update, and nothing would say so.
+      # AssemblyMetadata("UpdateChannel", "release") is a fixed byte blob in the compiled assembly
+      # (prolog 01 00, length-prefixed strings, no named arguments 00 00); the .xll packs it
+      # compressed, so the check reads the assembly the publish compiled.
+      - name: Refuse to ship an add-in that is not on the release channel
+        shell: pwsh
+        run: |
+          [byte[]] $blob = @(1, 0, 13) + [Text.Encoding]::UTF8.GetBytes('UpdateChannel') +
+                           @(7) + [Text.Encoding]::UTF8.GetBytes('release') + @(0, 0)
+          $latin1 = [Text.Encoding]::Latin1
+          $assembly = "$PWD/src/PivotScope.AddIn/obj/Release/net10.0-windows/PivotScope.AddIn.dll"
+          if (-not (Test-Path $assembly)) {
+            Write-Host "::error::$assembly not found: the update-channel check cannot read the compiled assembly."
+            exit 1
+          }
+          $dll = $latin1.GetString([IO.File]::ReadAllBytes($assembly))
+          if ($dll.IndexOf($latin1.GetString($blob), [StringComparison]::Ordinal) -lt 0) {
+            Write-Host '::error::PivotScope.AddIn.dll does not carry AssemblyMetadata("UpdateChannel", "release"): the add-in would never look for an update.'
+            exit 1
+          }
+          Write-Host 'PivotScope.AddIn.dll carries the release update channel.'
 
       - name: GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/PivotScope.zip
+          files: |
+            artifacts/PivotScope.zip
+            artifacts/PivotScope.zip.sha256
           generate_release_notes: true
           body: |
             ## Installation

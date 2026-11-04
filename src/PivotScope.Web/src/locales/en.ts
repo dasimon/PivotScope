@@ -26,6 +26,27 @@ const en: typeof fr = {
       '.xll file.',
   },
 
+  update: {
+    title: 'Updates',
+    devBuild: 'This copy of PivotScope is not a released build (local build): it does not look for updates.',
+    available: 'PivotScope {version} is available.',
+    notes: 'Release notes',
+    upToDate: 'PivotScope is up to date.',
+    lastCheck: 'Last check: {when}',
+    checking: 'Checking…',
+    checkNow: 'Check',
+    download: 'Download and verify',
+    downloadHint:
+      'Excel locks the add-in while it runs: PivotScope downloads the zip from GitHub, checks its SHA-256 ' +
+      'and puts it in your Downloads. You then replace the files with Excel closed.',
+    downloading: 'Downloading and verifying: {percent} %',
+    saved: 'Verified zip, saved here:',
+    replaceIn: 'Close Excel, then unzip it into the add-in folder, replacing the files:',
+    failed: 'Failed, nothing was changed: {reason}',
+    auto: 'Check automatically (when the pane opens, then twice a day)',
+    pillTitle: 'A new version of PivotScope is available',
+  },
+
   diagnostic: {
     noPivot: 'Place the cursor inside a PivotTable.',
     notOlap:

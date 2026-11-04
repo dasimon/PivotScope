@@ -87,6 +87,27 @@ internal sealed class WebBridge : IDisposable
             return Task.FromResult<object?>(null);
         });
 
+        // Update (AddInUpdates): the add-in cannot replace its locked .xll, so it finds, downloads
+        // and verifies the release, then hands the zip over in Downloads.
+        _router.Register("update.status", (_, _) =>
+            Task.FromResult<object?>(AddInUpdates.Status));
+
+        _router.Register("update.check", async (p, ct) =>
+        {
+            var automatic = p is { } element
+                && element.TryGetProperty("automatic", out var a)
+                && a.ValueKind == JsonValueKind.True;
+            return await AddInUpdates.CheckAsync(automatic, ct);
+        });
+
+        _router.Register("update.download", async (_, ct) => await AddInUpdates.DownloadAsync(ct));
+
+        _router.Register("update.openNotes", (_, _) =>
+        {
+            AddInUpdates.OpenNotes();
+            return Task.FromResult<object?>(null);
+        });
+
         _router.Register("pane.takeTab", (_, _) =>
             Task.FromResult<object?>(new { tab = _control.TakePendingTab() }));
 

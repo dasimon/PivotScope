@@ -5,6 +5,7 @@ import AboutPanel from './AboutPanel.vue'
 import ScopeMark from './ScopeMark.vue'
 import { currentLocale, setLocale, type Locale } from '../i18n'
 import { describeDiagnostic } from '../diagnostic'
+import { update } from '../update'
 import type { PivotContext } from '../types'
 
 const props = defineProps<{ context: PivotContext | null; busy: boolean }>()
@@ -32,6 +33,16 @@ function onLocaleChange(event: Event) {
     <div class="row">
       <span class="wordmark"><ScopeMark :state="connected ? 'cube' : 'off'" /><b>PivotScope</b></span>
       <span style="flex: 1" />
+
+      <!-- A newer release: opens About, where it is downloaded and verified. -->
+      <button
+        v-if="update.status?.available"
+        class="update-pill"
+        :title="t('update.pillTitle')"
+        @click="showAbout = true"
+      >
+        {{ update.status.available.version }}
+      </button>
 
       <select
         class="locale"
@@ -114,6 +125,20 @@ function onLocaleChange(event: Event) {
   min-height: 26px;
   padding: 2px 4px;
   font-size: 12px;
+}
+.update-pill {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--scope-face-right);
+  border-radius: 11px;
+  background: var(--scope-face-glow);
+  color: var(--scope-face-top);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variation-settings: 'MONO' 1;
+}
+.update-pill:hover {
+  background: rgba(52, 211, 153, 0.24);
 }
 .target {
   display: flex;
