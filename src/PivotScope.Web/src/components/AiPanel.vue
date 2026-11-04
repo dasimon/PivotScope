@@ -129,9 +129,9 @@ async function onAnswerClick(event: MouseEvent) {
 
 <style scoped>
 .markdown :deep(pre) { overflow-x: auto; }
-.markdown :deep(code) { font-family: Consolas, monospace; }
+.markdown :deep(code) { font-family: var(--font-mono); }
 .markdown :deep(h3),
-.markdown :deep(h4) { color: var(--accent); margin: 12px 0 4px; }
+.markdown :deep(h4) { color: var(--text); font-size: 12.5px; margin: 12px 0 4px; }
 .markdown :deep(.code) { position: relative; }
 .markdown :deep(.copy) { position: absolute; top: 4px; right: 4px; padding: 1px 8px; }
 .markdown :deep(.table) { overflow-x: auto; }

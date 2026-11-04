@@ -80,6 +80,7 @@ export default {
     catalog: 'Catalogue',
     cube: 'Cube',
     fields: 'Champs',
+    fieldsCount: '{n} champs',
     readingContext: 'Lecture du contexte…',
   },
 

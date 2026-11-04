@@ -32,6 +32,19 @@ code reuse**: PivotScope is MIT-licensed.
 - **No `MessageBox`**: a banner in the pane, plus a file log in
   `%LOCALAPPDATA%\PivotScope\logs`.
 
+- **Visual language ("Scope", shared with CubeScope, 2026-11-04)**: same tokens as CubeScope —
+  the three faces of the cube (emerald) as the only chromatic family, amber for warnings, coral
+  for errors, cool teal-slate backgrounds. They live as `--scope-*` variables in
+  `src/PivotScope.Web/src/styles.css` (the older `--bg`/`--accent`/… names are aliases kept for
+  the components). Typeface: Recursive (variable, bundled through
+  `@fontsource-variable/recursive`, served from the embedded resources like everything else);
+  `.mono`/`.leaf`/`.chip` use its MONO axis, Cascadia stays inside Monaco. The header carries the
+  cube mark (`ScopeMark`: emerald when an OLAP PivotTable with a readable connection is under
+  the cursor, outlined otherwise — PivotScope has no dev-server list, so no amber state) and the
+  target (server › catalog, then cube and field count). Section titles are quiet text with a
+  short emerald rule (`h2::before`); messages carry a left bar (`.notice` = nothing to do yet,
+  `.notice.warn` = read before acting, `.banner` = something failed).
+
 ## Known pitfalls (paid for once, do not rediscover them)
 
 ### Excel-DNA and COM

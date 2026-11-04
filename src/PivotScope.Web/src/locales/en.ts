@@ -80,6 +80,7 @@ const en: typeof fr = {
     catalog: 'Catalog',
     cube: 'Cube',
     fields: 'Fields',
+    fieldsCount: '{n} fields',
     readingContext: 'Reading context…',
   },
 
