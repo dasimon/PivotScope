@@ -316,6 +316,26 @@ depends on Excel and could only be reasoned about, not run: check them here.
 - [ ] The section follows the FR / EN switch
 - [ ] The log line "PivotScope <version> (<commit>) loaded" gives the same version
 
+## Update
+
+From the release after 0.7.0 (the first one that ships `PivotScope.zip.sha256`).
+To try it before a newer release exists, load a build packed with a LOWER version:
+`pwsh build/pack.ps1 -Version 0.0.1 -Channel release`, Excel closed.
+
+- [ ] A local build (`pack.ps1` without `-Channel`): About says it is not a
+      released build, and the log shows no update check
+- [ ] Stamped build, pane opened: ~10 s later the header shows the new version
+      as a pill; clicking it unfolds About
+- [ ] "Download and verify": progress, then Explorer opens on
+      `Downloads\PivotScope-<version>.zip` selected, and About names the folder of
+      the loaded `.xll`
+- [ ] Unzip it over the add-in folder with Excel closed, reopen Excel: the new
+      version is the one shown in About and in the log
+- [ ] "Release notes" opens the GitHub release page in the default browser
+- [ ] Untick "Check automatically", close and reopen Excel: no check in the log
+      (the "Check" button still works)
+- [ ] Network cut (or proxy page): a readable reason, nothing in Downloads
+
 ## Unloading
 
 - [ ] Close Excel: "PivotScope unloaded" in the log

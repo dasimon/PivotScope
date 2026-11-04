@@ -5,6 +5,22 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Update check**: when the pane opens, then twice a day, PivotScope reads the
+  latest release on GitHub and shows a newer version in the header. *About* →
+  *Download and verify* fetches the zip, checks its SHA-256 against the
+  release's `PivotScope.zip.sha256` and GitHub's digest, and saves it to
+  *Downloads* with the folder of the loaded `.xll` to replace. Excel locks the
+  add-in, so the files are replaced by hand, Excel closed. Only release builds
+  ask (`pack.ps1 -Channel release`); the automatic check can be turned off.
+- Releases now ship `PivotScope.zip.sha256`.
+
+### Changed
+
+- CubeScope engine (submodule) moved from 0.10 to 0.19, which brings the shared
+  update core. A cell in error still reaches the sheet as `#VALUE!`.
+
 ## [0.7.0] — 2026-11-04
 
 ### Changed

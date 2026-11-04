@@ -138,12 +138,15 @@ public sealed partial class CubeScopeSession
 
     /// <summary>
     /// A cell in error throws on every accessor (documented pitfall in
-    /// CubeScope): its message is the only thing worth keeping.
+    /// CubeScope): its message is the only thing worth keeping. The value stays
+    /// a <see cref="CellError"/> (what RangeProjection writes as #VALUE!); the
+    /// message also goes to CellData.Error, which CubeScope's mapper stores under
+    /// a twin "__err" key that RangeProjection, reading by column, never sees.
     /// </summary>
-    private static object? RawValue(Cell cell)
+    private static CellData RawValue(Cell cell)
     {
-        try { return cell.Value; }
-        catch (Exception ex) { return new CellError(ex.Message); }
+        try { return new CellData(cell.Value); }
+        catch (Exception ex) { return new CellData(new CellError(ex.Message), ex.Message); }
     }
 
     /// <summary>

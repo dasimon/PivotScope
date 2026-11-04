@@ -26,6 +26,27 @@ export default {
       'côté du fichier .xll.',
   },
 
+  update: {
+    title: 'Mises à jour',
+    devBuild: 'Cette copie de PivotScope n’est pas une version publiée (build local) : elle ne cherche pas de mise à jour.',
+    available: 'PivotScope {version} est disponible.',
+    notes: 'Notes de version',
+    upToDate: 'PivotScope est à jour.',
+    lastCheck: 'Dernière recherche : {when}',
+    checking: 'Recherche…',
+    checkNow: 'Rechercher',
+    download: 'Télécharger et vérifier',
+    downloadHint:
+      'Excel verrouille le complément tant qu’il est ouvert : PivotScope télécharge le zip depuis GitHub, ' +
+      'vérifie son empreinte SHA-256 et le dépose dans vos Téléchargements. Vous remplacez ensuite les fichiers, Excel fermé.',
+    downloading: 'Téléchargement et vérification : {percent} %',
+    saved: 'Zip vérifié, enregistré ici :',
+    replaceIn: 'Fermez Excel, puis décompressez-le dans le dossier du complément, en remplaçant les fichiers :',
+    failed: 'Échec, rien n’a été modifié : {reason}',
+    auto: 'Rechercher automatiquement (à l’ouverture du volet, puis deux fois par jour)',
+    pillTitle: 'Une nouvelle version de PivotScope est disponible',
+  },
+
   diagnostic: {
     noPivot: 'Placez le curseur dans un tableau croisé dynamique.',
     notOlap:

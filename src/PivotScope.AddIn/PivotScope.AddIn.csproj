@@ -39,6 +39,15 @@
     <ProjectReference Include="..\PivotScope.Core\PivotScope.Core.csproj" />
   </ItemGroup>
 
+  <!-- The update channel, fixed when the add-in is built (after Lucarne and CubeScope). The add-in
+       looks for a newer release only if this assembly carries AssemblyMetadata("UpdateChannel",
+       "release"). Only release.yml passes it, through build\pack.ps1 -Channel release (a test holds
+       it there); a source build and CI carry no stamp and never ask GitHub. Read by
+       CubeScope.Core's UpdateBuild, from this assembly (Excel has no entry assembly of ours). -->
+  <ItemGroup Condition="'$(UpdateChannel)' != ''">
+    <AssemblyMetadata Include="UpdateChannel" Value="$(UpdateChannel)" />
+  </ItemGroup>
+
   <PropertyGroup>
     <SpaDir>$(MSBuildThisFileDirectory)..\PivotScope.Web</SpaDir>
     <SpaDist>$(SpaDir)\dist</SpaDist>

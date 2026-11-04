@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { call, isHosted, onEvent } from './bridge'
 import { currentLocale } from './i18n'
 import { setCubeMeta } from './mdx-completion'
+import { startUpdateChecks } from './update'
 import type {
   AiAction, AiRunResult, CalculationDefinition, CellProvenance, ConfirmWriteResult, CubeMeta,
   ExistingCalculation, FieldVisibility, FilterListResult, LevelVisibility,
@@ -441,6 +442,7 @@ onMounted(() => {
 
   void loadContext()
   unsubscribe = onEvent('pivotChanged', onPivotChanged)
+  startUpdateChecks()
 
   // Excel's context menu asks for a specific tab: without this subscription,
   // "D'où vient ce chiffre ?" opened the pane without going to that tab.

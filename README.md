@@ -41,6 +41,20 @@ Browse**, then pick `PivotScope64.xll`.
 Only a 64-bit build is produced, on purpose: 32-bit Excel is out of scope, and
 shipping both flavours only invites loading the wrong one.
 
+## Updates
+
+Excel keeps the add-in locked while it runs, so PivotScope cannot replace
+itself. It does the rest: when the pane opens (then twice a day), it reads the
+latest release of `dasimon/PivotScope` from the GitHub API and shows a newer
+`vMAJOR.MINOR.PATCH` as a pill in the header. *About* → **Download and verify**
+fetches `PivotScope.zip` and `PivotScope.zip.sha256` over HTTPS from GitHub's
+hosts only, checks the zip's SHA-256 against that file **and** against the
+digest GitHub states, then saves it to your *Downloads* folder and opens it in
+Explorer, with the folder of the loaded `.xll` to unzip it into once Excel is
+closed. A local build never asks; the automatic check can be turned off in
+*About*. The engine is CubeScope's (and
+[Lucarne](https://github.com/dasimon/lucarne)'s), by the same author.
+
 ## Building
 
 ```bash

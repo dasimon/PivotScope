@@ -45,6 +45,20 @@ code reuse**: PivotScope is MIT-licensed.
   short emerald rule (`h2::before`); messages carry a left bar (`.notice` = nothing to do yet,
   `.notice.warn` = read before acting, `.banner` = something failed).
 
+- **Update (2026-11-04)**: CubeScope.Core's `Updates` (Lucarne's update core, generalised by
+  `UpdateProduct`) drives `AddInUpdates`: one checker per Excel process, created on the first
+  pane request (the add-in's startup stays free of network), the build read from the ADD-IN'S
+  assembly (`typeof(AppInfo).Assembly` — Excel has no entry assembly of ours). **No self-replace**:
+  Excel locks the `.xll` and the natives, so the verified zip goes to Downloads with the folder of
+  `ExcelDnaUtil.XllPath`; the user replaces the files, Excel closed. Only a build stamped
+  `AssemblyMetadata("UpdateChannel", "release")` asks — `release.yml` → `pack.ps1 -Channel release`,
+  a workflow step checks `obj/Release/net10.0-windows/PivotScope.AddIn.dll` (the `.xll` packs it
+  compressed), `UpdateConventionTests` checks the workflow. `pack.ps1` writes
+  `PivotScope.zip.sha256` (`sha256sum` text format, ASCII). The automatic-check preference lives
+  in the pane's `localStorage` (`pivotscope.update.auto`), the 12 h throttle in the add-in.
+  The first release that ships the `.sha256` is the first one an installed copy can be offered:
+  0.7.0 has none, so a 0.7.0 → 0.8.0 update still goes by hand.
+
 ## Known pitfalls (paid for once, do not rediscover them)
 
 ### Excel-DNA and COM
@@ -138,6 +152,11 @@ code reuse**: PivotScope is MIT-licensed.
   them in its own locale. `CubeScopeSession.ExecuteAsync` maps the CellSet
   itself with raw `Cell.Value`; a cell in error becomes a `CellError`
   (`#VALUE!` in the sheet), never the text "#ERREUR".
+- **CubeScope.Core 0.19 (submodule bump of 2026-11-04)**: `CellSetMapper.Build` takes a
+  `Func<int, CellData>`, no longer an `object` — `CubeScopeSession.RawValue` wraps the raw value,
+  and a cell in error stays a `CellError` VALUE (what `RangeProjection` writes as `#VALUE!`), its
+  message duplicated in `CellData.Error`, which the mapper stores under a twin `v{c}__err` key that
+  `RangeProjection`, reading by column field, never sees.
 - **One SSAS connection serves one command at a time**: a free query gets its
   own connection (`SessionLane.Query`), otherwise completion, the explorer and
   provenance wait behind it for minutes.

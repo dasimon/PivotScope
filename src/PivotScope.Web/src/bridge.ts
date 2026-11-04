@@ -20,7 +20,7 @@ type Pending = {
  * cell edit mode): without a limit, the button would stay on "Applying…"
  * forever. Queries and AI calls legitimately run for minutes.
  */
-const LONG_CALLS = new Set(['query.run', 'ai.run', 'pivot.filterList', 'query.confirmWrite'])
+const LONG_CALLS = new Set(['query.run', 'ai.run', 'pivot.filterList', 'query.confirmWrite', 'update.download'])
 const LONG_TIMEOUT_MS = 30 * 60_000
 const DEFAULT_TIMEOUT_MS = 2 * 60_000
 
