@@ -17,7 +17,7 @@ and shares its engine.
 
 ## Status
 
-Pre-1.0. Version 0.7.0 covers the pane (MDX view, metadata
+Pre-1.0. Version 0.8.0 covers the pane (MDX view, metadata
 explorer, filter by list), free MDX queries written to a range, calculated
 measures, members and named sets with a reusable library, cell provenance,
 and the MDX assistant — in French or English. See [CHANGELOG.md](CHANGELOG.md).
