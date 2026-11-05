@@ -5,6 +5,8 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-11-05
+
 ### Added
 
 - **Update check**: when the pane opens, then twice a day, PivotScope reads the
