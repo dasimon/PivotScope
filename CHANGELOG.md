@@ -5,6 +5,8 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-11-16
+
 ### Added
 
 - **Choose the variable that holds the Anthropic key.** The assistant read only
