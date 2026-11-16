@@ -233,8 +233,14 @@ const en: typeof fr = {
   ai: {
     title: 'MDX assistant',
     notConfigured:
-      'The assistant is not configured. Set the ANTHROPIC_API_KEY environment ' +
+      'The assistant is not configured. Set the {var} environment ' +
       'variable, then restart Excel. PivotScope never stores the key.',
+    keyReadFrom: 'Key read from',
+    keyChange: 'Change',
+    keyLabel: 'Environment variable holding the Anthropic key',
+    keyHelp: 'Only the name is stored; the key stays in the environment. Empty: ANTHROPIC_API_KEY.',
+    keySave: 'Save',
+    keySaved: 'PivotScope now reads {var}.',
     source: 'MDX to analyse — the table context is attached automatically',
     useTableQuery: "Use the table's query",
     running: 'Analysing…',

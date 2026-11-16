@@ -2,12 +2,15 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MdxEditor from './MdxEditor.vue'
+import { call } from '../bridge'
 import { codeBlocks, renderMarkdown } from '../markdown'
-import type { AiAction, PivotContext } from '../types'
+import type { AiAction, AiStatus, PivotContext } from '../types'
 
 const props = defineProps<{
   context: PivotContext | null
   configured: boolean
+  /** Environment variable read for the Anthropic key (a setting; never the key). */
+  keyVariable: string
   answer: string | null
   /** The counter makes the same expression sent twice still a new request. */
   seed: { text: string; n: number } | null
@@ -17,6 +20,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   run: [payload: { action: AiAction; mdx: string }]
   cancel: []
+  status: [status: AiStatus]
 }>()
 
 const { t } = useI18n()
@@ -45,6 +49,42 @@ function restorePrevious() {
   const text = previous.value
   previous.value = null
   mdx.value = text
+}
+
+// Name of the variable read for the Anthropic key: open by itself while no key is found.
+const DEFAULT_KEY_VARIABLE = 'ANTHROPIC_API_KEY'
+const showKey = ref(false)
+const keyName = ref('')
+const keyError = ref('')
+const keyNote = ref('')
+const keySaving = ref(false)
+watch(() => props.keyVariable, v => { keyName.value = v }, { immediate: true })
+const keyOpen = computed(() => showKey.value || !props.configured)
+const keyChanged = computed(() => (keyName.value.trim() || DEFAULT_KEY_VARIABLE) !== props.keyVariable)
+
+function toggleKey() {
+  showKey.value = !showKey.value
+  keyName.value = props.keyVariable
+  keyError.value = ''
+  keyNote.value = ''
+}
+
+async function saveKey() {
+  if (!keyChanged.value || keySaving.value) return
+  // Stay open once saved: a key now found would otherwise close the setting before its note shows.
+  showKey.value = true
+  keySaving.value = true
+  keyError.value = ''
+  keyNote.value = ''
+  try {
+    const status = await call<AiStatus>('ai.keyVariable', { name: keyName.value.trim() })
+    emit('status', status)
+    keyNote.value = t('ai.keySaved', { var: status.keyVariable })
+  } catch (e) {
+    keyError.value = e instanceof Error ? e.message : String(e)
+  } finally {
+    keySaving.value = false
+  }
 }
 
 const actions = computed<{ value: AiAction; label: string; hint: string }[]>(() => [
@@ -85,9 +125,34 @@ async function onAnswerClick(event: MouseEvent) {
   <div class="stack">
     <h2>{{ t('ai.title') }}</h2>
 
-    <p v-if="!configured" class="notice">
-      {{ t('ai.notConfigured') }}
+    <p v-if="!configured" class="notice warn">
+      {{ t('ai.notConfigured', { var: keyVariable }) }}
     </p>
+    <div v-else class="row">
+      <span class="muted" style="flex: 1">
+        {{ t('ai.keyReadFrom') }} <span class="mono">{{ keyVariable }}</span>
+      </span>
+      <button class="ghost" :aria-expanded="keyOpen" @click="toggleKey">{{ t('ai.keyChange') }}</button>
+    </div>
+
+    <div v-if="keyOpen" class="stack key">
+      <label class="field-label" for="ai-key-variable">{{ t('ai.keyLabel') }}</label>
+      <div class="row">
+        <input
+          id="ai-key-variable"
+          v-model="keyName"
+          class="mono"
+          style="flex: 1; min-width: 0"
+          spellcheck="false"
+          autocomplete="off"
+          :placeholder="DEFAULT_KEY_VARIABLE"
+          @keydown.enter="saveKey"
+        >
+        <button :disabled="!keyChanged || keySaving" @click="saveKey">{{ t('ai.keySave') }}</button>
+      </div>
+      <small v-if="keyError" class="key-error" role="alert">{{ keyError }}</small>
+      <small v-else class="muted">{{ keyNote || t('ai.keyHelp') }}</small>
+    </div>
 
     <template v-else>
       <div class="row wrap">
@@ -128,6 +193,8 @@ async function onAnswerClick(event: MouseEvent) {
 </template>
 
 <style scoped>
+.key { gap: 6px; padding: 8px 10px; background: var(--scope-bg-1); border-left: 3px solid var(--scope-line-2); border-radius: 4px; }
+.key-error { color: var(--scope-danger); }
 .markdown :deep(pre) { overflow-x: auto; }
 .markdown :deep(code) { font-family: var(--font-mono); }
 .markdown :deep(h3),

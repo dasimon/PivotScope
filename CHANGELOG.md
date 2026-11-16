@@ -5,6 +5,20 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Choose the variable that holds the Anthropic key.** The assistant read only
+  `ANTHROPIC_API_KEY`, which other tools also pick up (Claude Code prefers it to a
+  subscription). *IA* → **Change** now names another variable, such as
+  `CLAUDE_ESSAIS_API_KEY`; the setting opens by itself while no key is found.
+  Only the name is stored, in PivotScope's state database; the key stays in the
+  environment and is handed to the SDK explicitly, so no other variable stands in
+  for it.
+
+### Changed
+
+- CubeScope engine (submodule) moved to the commit that adds the key variable.
+
 ## [0.8.0] — 2026-11-05
 
 ### Added

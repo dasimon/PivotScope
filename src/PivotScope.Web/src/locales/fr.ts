@@ -238,8 +238,13 @@ export default {
     title: 'Assistant MDX',
     notConfigured:
       'L’assistant n’est pas configuré. Définissez la variable d’environnement ' +
-      'ANTHROPIC_API_KEY, puis relancez Excel. La clé n’est jamais enregistrée ' +
-      'par PivotScope.',
+      '{var}, puis relancez Excel. La clé n’est jamais enregistrée par PivotScope.',
+    keyReadFrom: 'Clé lue dans',
+    keyChange: 'Changer',
+    keyLabel: 'Variable d’environnement de la clé Anthropic',
+    keyHelp: 'Seul le nom est enregistré, la clé reste dans l’environnement. Vide : ANTHROPIC_API_KEY.',
+    keySave: 'Enregistrer',
+    keySaved: 'PivotScope lit maintenant {var}.',
     source: 'MDX à analyser — le contexte du tableau est joint automatiquement',
     useTableQuery: 'Reprendre la requête du tableau',
     running: 'Analyse en cours…',
