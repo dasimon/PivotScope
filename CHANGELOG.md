@@ -17,7 +17,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- CubeScope engine (submodule) moved to the commit that adds the key variable.
+- CubeScope engine (submodule) moved from 0.19 to 0.21, which brings the key variable.
 
 ## [0.8.0] — 2026-11-05
 
