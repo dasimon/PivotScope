@@ -198,11 +198,74 @@ public sealed partial class CubeScopeSession
         => _script.GetScriptAsync(cube, ct: ct);
 
     /// <summary>AI is optional: without a key, the UI degrades instead of failing.</summary>
-    public static bool IsAiConfigured => AiService.IsConfigured;
+    public static bool IsAiConfigured
+    {
+        get
+        {
+            LoadAiKeyVariable();
+            return AiService.IsConfigured;
+        }
+    }
+
+    /// <summary>
+    /// Name of the environment variable that holds the Anthropic key (ANTHROPIC_API_KEY by
+    /// default). Only the name is kept, in PivotScope's state database; the key stays in the
+    /// environment. A variable of one's own keeps the key away from other tools that read
+    /// ANTHROPIC_API_KEY.
+    /// </summary>
+    public static string AiKeyVariable
+    {
+        get
+        {
+            LoadAiKeyVariable();
+            return AiService.KeyVariable;
+        }
+    }
+
+    /// <summary>Stores the variable name and applies it to this Excel process. A blank name goes
+    /// back to ANTHROPIC_API_KEY; an invalid one throws an ArgumentException whose message is
+    /// meant for the user, and the previous name is kept.</summary>
+    public static string SetAiKeyVariable(string? name, string? statePath = null)
+    {
+        using var store = new StateStore(statePath ?? DefaultStatePath);
+        var value = store.SetAiKeyVariable(name);
+        lock (KeyVariableGate)
+        {
+            AiService.KeyVariable = value;
+            _keyVariableLoaded = true;
+        }
+        return value;
+    }
+
+    private static readonly object KeyVariableGate = new();
+    private static bool _keyVariableLoaded;
+
+    /// <summary>Reads the stored name once per process, on first need: nothing touches the disk
+    /// while the add-in loads. An unreadable database leaves the default name.</summary>
+    private static void LoadAiKeyVariable()
+    {
+        lock (KeyVariableGate)
+        {
+            if (_keyVariableLoaded) return;
+            _keyVariableLoaded = true;
+            try
+            {
+                using var store = new StateStore(DefaultStatePath);
+                AiService.KeyVariable = store.GetAiKeyVariable();
+            }
+            catch (Exception)
+            {
+                // Locked or damaged state database: the default variable still works.
+            }
+        }
+    }
 
     public Task<string> RunAiAsync(
         AiAction action, string prompt, string lang = "fr", CancellationToken ct = default)
-        => _ai.RunAsync(action, prompt, lang, ct);
+    {
+        LoadAiKeyVariable();
+        return _ai.RunAsync(action, prompt, lang, ct);
+    }
 
     /// <summary>
     /// Enumerates the members of a level with their caption and unique name.

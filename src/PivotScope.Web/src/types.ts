@@ -68,6 +68,12 @@ export type CubeMeta = {
 
 export type AiAction = 'Expliquer' | 'Optimiser' | 'AntiPatterns' | 'Formater'
 
+/** AI state; keyVariable names the environment variable read for the Anthropic key. */
+export interface AiStatus {
+  configured: boolean
+  keyVariable: string
+}
+
 export type AiRunResult = { cancelled: boolean; markdown: string }
 
 export type DependencyNode = {

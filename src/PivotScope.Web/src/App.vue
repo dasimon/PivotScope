@@ -6,7 +6,7 @@ import { currentLocale } from './i18n'
 import { setCubeMeta } from './mdx-completion'
 import { startUpdateChecks } from './update'
 import type {
-  AiAction, AiRunResult, CalculationDefinition, CellProvenance, ConfirmWriteResult, CubeMeta,
+  AiAction, AiRunResult, AiStatus, CalculationDefinition, CellProvenance, ConfirmWriteResult, CubeMeta,
   ExistingCalculation, FieldVisibility, FilterListResult, LevelVisibility,
   PivotContext, QueryRunResult, StoredCalculation, WriteMode,
 } from './types'
@@ -107,6 +107,12 @@ async function describeCell() {
 }
 
 const aiConfigured = ref(false)
+const aiKeyVariable = ref('ANTHROPIC_API_KEY')
+
+function applyAiStatus(s: AiStatus) {
+  aiConfigured.value = s.configured
+  if (s.keyVariable) aiKeyVariable.value = s.keyVariable
+}
 const aiAnswer = ref<string | null>(null)
 /** A counter goes with the text: sending the same expression twice must still reach the panel. */
 const aiSeed = ref<{ text: string; n: number } | null>(null)
@@ -456,8 +462,8 @@ onMounted(() => {
 
   // The AI depends only on the environment: we query its status once,
   // so the panel degrades cleanly up front rather than on use.
-  void call<{ configured: boolean }>('ai.status')
-    .then(s => { aiConfigured.value = s.configured })
+  void call<AiStatus>('ai.status')
+    .then(applyAiStatus)
     .catch(() => { aiConfigured.value = false })
 })
 
@@ -573,11 +579,13 @@ onBeforeUnmount(() => {
       <AiPanel
         :context="context"
         :configured="aiConfigured"
+        :key-variable="aiKeyVariable"
         :answer="aiAnswer"
         :seed="aiSeed"
         :busy="busyAi"
         @run="runAi"
         @cancel="cancel('ai.cancel')"
+        @status="applyAiStatus"
       />
     </div>
 

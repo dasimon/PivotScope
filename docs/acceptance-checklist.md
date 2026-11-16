@@ -165,6 +165,11 @@ Record the tested version and the date at the bottom of the page.
 
 - [ ] **Without** `ANTHROPIC_API_KEY` → clear message, buttons disabled, no
       network call
+- [ ] The key setting is open while no key is found; `MA-CLE` is refused with
+      its message; `CLAUDE_ESSAIS_API_KEY` (set in the environment) is saved,
+      the assistant becomes available without restarting Excel, and
+      **Change** shows the name again after Excel restarts
+- [ ] A blank name goes back to `ANTHROPIC_API_KEY`
 - [ ] With the key → the four actions respond
 - [ ] The answer takes the **table context** into account (it mentions the
       fields actually placed, not only the query)

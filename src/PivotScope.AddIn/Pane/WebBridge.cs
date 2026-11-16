@@ -135,10 +135,16 @@ internal sealed class WebBridge : IDisposable
                 s => s.GetMembersAsync(cube, hierarchy, ct: ct), ct);
         });
 
-        // The AI configuration depends only on the environment
-        // (ANTHROPIC_API_KEY): no need for a cube or a session to tell.
-        _router.Register("ai.status", (_, _) =>
-            Task.FromResult<object?>(new { configured = CubeScopeSession.IsAiConfigured }));
+        // The AI configuration depends only on the environment (the variable named by the
+        // keyVariable setting, ANTHROPIC_API_KEY by default): no cube nor session needed.
+        _router.Register("ai.status", (_, _) => Task.FromResult<object?>(AiStatus()));
+
+        // Name of the variable holding the Anthropic key — never the key itself.
+        _router.Register("ai.keyVariable", (p, _) =>
+        {
+            CubeScopeSession.SetAiKeyVariable(Optional(p, "name"));
+            return Task.FromResult<object?>(AiStatus());
+        });
 
         _router.Register("ai.cancel", (_, _) =>
             Task.FromResult<object?>(new { cancelled = TryCancel(_runningAi) }));
@@ -536,6 +542,12 @@ internal sealed class WebBridge : IDisposable
            && v.ValueKind is JsonValueKind.True or JsonValueKind.False
             ? v.GetBoolean()
             : fallback;
+
+    private static object AiStatus() => new
+    {
+        configured = CubeScopeSession.IsAiConfigured,
+        keyVariable = CubeScopeSession.AiKeyVariable,
+    };
 
     private static string Required(JsonElement? p, string name) =>
         Optional(p, name) ?? throw new InvalidOperationException($"Paramètre manquant : {name}");
