@@ -3,11 +3,11 @@
     Produces the PivotScope deliverable: a self-contained folder and its zip.
 
 .DESCRIPTION
-    ExcelDnaPack merges all managed assemblies into a single .xll
-    (~6 MB). The NATIVE DLLs, however, are not embedded: the
-    ExcelDnaPackNativeLibraryDependencies property is set in the .csproj but has
-    no observable effect with ExcelDna.AddIn 1.9. So they are placed in
-    runtimes\win-x64\native\, where .NET resolves them.
+    ExcelDnaPack merges all managed assemblies and the native DLLs into a single
+    .xll (~8 MB); Excel-DNA extracts a native DLL to %TEMP%\ExcelDna.Host on first
+    use. It finds one only under its exact file name, hence PackedNativeLibraries
+    for e_sqlite3. The packed .xll never reads the runtimes\win-x64\native\ copy
+    made below: it is redundant, kept until a release has run without it.
 
     Result: 5 files instead of the 76 in the build folder (with the
     third-party notices).

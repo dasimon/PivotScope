@@ -17,6 +17,8 @@ public sealed class PivotScopeAddIn : IExcelAddIn
             // Without this call, the task pane's WinForms controls are rendered in
             // Windows 95 style — the official Excel-DNA sample does it too.
             System.Windows.Forms.Application.EnableVisualStyles();
+            // Before any SQLite call: the packed .xll otherwise hides e_sqlite3.dll from it.
+            PackedNativeLibraries.Register();
             Interop.ContextMenu.Install();
             FileLog.Write($"PivotScope {AppInfo.Version} ({AppInfo.Commit ?? "no commit"}) " +
                           $"loaded (Excel {ExcelDnaUtil.ExcelVersion}).");

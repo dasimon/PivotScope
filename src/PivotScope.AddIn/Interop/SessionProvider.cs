@@ -53,9 +53,10 @@ public sealed class SessionProvider : IDisposable
             {
                 session = await entry.Session.WaitAsync(ct).ConfigureAwait(false);
             }
-            catch (Exception) when (!ct.IsCancellationRequested)
+            catch (Exception ex) when (!ct.IsCancellationRequested)
             {
                 // A failed connection attempt is not cached: the next call retries.
+                FileLog.Write($"SSAS session {key} could not be opened.", ex);
                 Evict(key, entry);
                 throw;
             }
