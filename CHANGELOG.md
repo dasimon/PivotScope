@@ -5,6 +5,15 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **SQLite failed in the released add-in**, so no cube could be queried and no setting
+  saved ("The type initializer for 'Microsoft.Data.Sqlite.SqliteConnection' threw an
+  exception"). SQLitePCLRaw asks for `e_sqlite3`, without an extension, and Excel-DNA 1.9
+  only finds a packed native DLL under its exact file name. The add-in now asks for
+  `e_sqlite3.dll` on its behalf.
+- A failed SSAS session is now written to the log; it used to be retried silently.
+
 ## [0.9.0] — 2026-11-16
 
 ### Added
