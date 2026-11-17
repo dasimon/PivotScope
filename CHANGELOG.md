@@ -5,6 +5,8 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.1] — 2026-11-17
+
 ### Fixed
 
 - **SQLite failed in the released add-in**, so no cube could be queried and no setting
